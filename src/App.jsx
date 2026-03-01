@@ -9,7 +9,7 @@ const Katex = ({ tex, display = false, style = {} }) => {
     if (ref.current) {
       try {
         katex.render(tex, ref.current, { displayMode: display, throwOnError: false })
-      } catch (e) {
+      } catch {
         if (ref.current) ref.current.textContent = tex
       }
     }
@@ -191,6 +191,10 @@ const CONCEPT_TEXT = {
   },
 };
 
+const AI_tutor = {
+  name: "Brown"
+}
+
 // ─── FORMULA CARDS DATA ───────────────────────────────────────────────────────
 const FORMULAS = [
   {
@@ -267,6 +271,22 @@ const CONCEPT_FORMULA_IDS = {
   friction:   ["f2"],
   sho:        ["f3", "f4"],
 };
+
+// ─── SHARED SLIDER ───────────────────────────────────────────────────────────
+const SimSlider = ({ label, value, min, max, step, unit, decimals = 2, onChange }) => (
+  <div style={{ marginBottom: 10 }}>
+    <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 3 }}>
+      <span className="label">{label}</span>
+      <span style={{ fontFamily: T.mono, fontSize: 11, color: T.blue }}>
+        {value.toFixed(decimals)} {unit}
+      </span>
+    </div>
+    <input type="range" min={min} max={max} step={step} value={value}
+      onChange={onChange}
+      style={{ width: "100%", accentColor: T.blue, cursor: "pointer" }}
+    />
+  </div>
+);
 
 // ─── SPRING-MASS SIMULATION ───────────────────────────────────────────────────
 const SHOSim = () => {
@@ -427,23 +447,13 @@ const SHOSim = () => {
     return () => cancelAnimationFrame(animRef.current);
   }, [params, omega, period]);
 
-  const reset  = () => { stateRef.current.t = 0; };
-  const toggle = () => { stateRef.current.running = !stateRef.current.running; };
+  const reset  = useCallback(() => { stateRef.current.t = 0; }, []);
+  const toggle = useCallback(() => { stateRef.current.running = !stateRef.current.running; }, []);
 
-  const SliderRow = ({ label, param, min, max, step, unit }) => (
-    <div style={{ marginBottom: 10 }}>
-      <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 3 }}>
-        <span className="label">{label}</span>
-        <span style={{ fontFamily: T.mono, fontSize: 11, color: T.blue }}>
-          {params[param].toFixed(2)} {unit}
-        </span>
-      </div>
-      <input type="range" min={min} max={max} step={step} value={params[param]}
-        onChange={e => { stateRef.current.t = 0; setParams(p => ({ ...p, [param]: parseFloat(e.target.value) })); }}
-        style={{ width: "100%", accentColor: T.blue, cursor: "pointer" }}
-      />
-    </div>
-  );
+  const onSlider = useCallback((param, value) => {
+    stateRef.current.t = 0;
+    setParams(p => ({ ...p, [param]: value }));
+  }, []);
 
   return (
     <div style={{ display: "flex", gap: 18, alignItems: "flex-start" }}>
@@ -453,19 +463,22 @@ const SHOSim = () => {
       </div>
       <div style={{ width: 205 }}>
         <div className="label" style={{ marginBottom: 8 }}>Parameters</div>
-        <SliderRow label="Mass"      param="mass"      min={0.2} max={4}   step={0.1}  unit="kg"  />
-        <SliderRow label="Spring k"  param="k"         min={1}   max={30}  step={0.5}  unit="N/m" />
-        <SliderRow label="Damping"   param="damping"   min={0}   max={0.8} step={0.02} unit=""    />
-        <SliderRow label="Amplitude" param="amplitude" min={10}  max={120} step={5}    unit="px"  />
+        <SimSlider label="Mass"      value={params.mass}      min={0.2} max={4}   step={0.1}  unit="kg"  onChange={e => onSlider("mass", parseFloat(e.target.value))} />
+        <SimSlider label="Spring k"  value={params.k}         min={1}   max={30}  step={0.5}  unit="N/m" onChange={e => onSlider("k", parseFloat(e.target.value))} />
+        <SimSlider label="Damping"   value={params.damping}   min={0}   max={0.8} step={0.02} unit=""     onChange={e => onSlider("damping", parseFloat(e.target.value))} />
+        <SimSlider label="Amplitude" value={params.amplitude} min={10}  max={120} step={5}    unit="px"  decimals={0} onChange={e => onSlider("amplitude", parseFloat(e.target.value))} />
 
         <div style={{ display: "flex", gap: 6, marginTop: 6 }}>
-          {[["Pause", toggle], ["Reset", reset]].map(([lbl, fn]) => (
-            <button key={lbl} onClick={fn} style={{
-              flex: 1, padding: "5px 0", borderRadius: 4,
-              border: `1px solid ${T.border2}`, background: T.bg1,
-              color: T.text1, fontSize: 11, fontWeight: 500,
-            }}>{lbl}</button>
-          ))}
+          <button onClick={toggle} style={{
+            flex: 1, padding: "5px 0", borderRadius: 4,
+            border: `1px solid ${T.border2}`, background: T.bg1,
+            color: T.text1, fontSize: 11, fontWeight: 500,
+          }}>Pause</button>
+          <button onClick={reset} style={{
+            flex: 1, padding: "5px 0", borderRadius: 4,
+            border: `1px solid ${T.border2}`, background: T.bg1,
+            color: T.text1, fontSize: 11, fontWeight: 500,
+          }}>Reset</button>
         </div>
 
         <div style={{ marginTop: 10, padding: 10, background: T.bg1, borderRadius: 6, border: `1px solid ${T.border}` }}>
@@ -499,8 +512,7 @@ const ProjectileSim = () => {
   const canvasRef = useRef(null);
   const animRef   = useRef(null);
   const [params, setParams] = useState({ angle: 45, v0: 20, g: 9.81 });
-  const [running, setRunning] = useState(false);
-  const [metrics, setMetrics] = useState({ range: "0", maxH: "0", tFlight: "0.00" });
+  const [running, setRunning] = useState(true);
   const tRef = useRef(0);
 
   const angleRad = params.angle * Math.PI / 180;
@@ -509,10 +521,7 @@ const ProjectileSim = () => {
   const tF   = (2 * vy0) / params.g;
   const range = vx * tF;
   const maxH  = (vy0 * vy0) / (2 * params.g);
-
-  useEffect(() => {
-    setMetrics({ range: range.toFixed(1), maxH: maxH.toFixed(1), tFlight: tF.toFixed(2) });
-  }, [params]);
+  const metrics = { range: range.toFixed(1), maxH: maxH.toFixed(1), tFlight: tF.toFixed(2) };
 
   const drawFrame = useCallback((ctx, W, H, progress = 1) => {
     const groundY = H - 48;
@@ -660,20 +669,10 @@ const ProjectileSim = () => {
     drawFrame(canvas.getContext("2d"), canvas.width, canvas.height, 0);
   }, [params, drawFrame]);
 
-  const SliderRow = ({ label, param, min, max, step, unit }) => (
-    <div style={{ marginBottom: 10 }}>
-      <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 3 }}>
-        <span className="label">{label}</span>
-        <span style={{ fontFamily: T.mono, fontSize: 11, color: T.blue }}>
-          {params[param].toFixed(param === "g" ? 2 : 0)} {unit}
-        </span>
-      </div>
-      <input type="range" min={min} max={max} step={step} value={params[param]}
-        onChange={e => { setRunning(false); setParams(p => ({ ...p, [param]: parseFloat(e.target.value) })); }}
-        style={{ width: "100%", accentColor: T.blue }}
-      />
-    </div>
-  );
+  const onProjSlider = useCallback((param, value) => {
+    setRunning(false);
+    setParams(p => ({ ...p, [param]: value }));
+  }, []);
 
   return (
     <div style={{ display: "flex", gap: 18, alignItems: "flex-start" }}>
@@ -683,9 +682,9 @@ const ProjectileSim = () => {
       </div>
       <div style={{ width: 205 }}>
         <div className="label" style={{ marginBottom: 8 }}>Parameters</div>
-        <SliderRow label="Launch Angle" param="angle" min={5}   max={85}   step={1}   unit="°"    />
-        <SliderRow label="Init. Speed"  param="v0"    min={5}   max={50}   step={1}   unit="m/s"  />
-        <SliderRow label="Gravity"      param="g"     min={1.6} max={24.8} step={0.1} unit="m/s²" />
+        <SimSlider label="Launch Angle" value={params.angle} min={5}   max={85}   step={1}   unit="°"    decimals={0} onChange={e => onProjSlider("angle", parseFloat(e.target.value))} />
+        <SimSlider label="Init. Speed"  value={params.v0}    min={5}   max={50}   step={1}   unit="m/s"  decimals={0} onChange={e => onProjSlider("v0", parseFloat(e.target.value))} />
+        <SimSlider label="Gravity"      value={params.g}     min={1.6} max={24.8} step={0.1} unit="m/s²"              onChange={e => onProjSlider("g", parseFloat(e.target.value))} />
 
         <button onClick={() => setRunning(true)} style={{
           width: "100%", padding: "7px 0", marginTop: 6, borderRadius: 4,
@@ -720,8 +719,8 @@ const ProjectileSim = () => {
 };
 
 // ─── FORMULA CARD ─────────────────────────────────────────────────────────────
-const FormulaCard = ({ formula }) => {
-  const [open, setOpen] = useState(false);
+const FormulaCard = ({ formula, defaultOpen = false }) => {
+  const [open, setOpen] = useState(defaultOpen);
 
   return (
     <div onClick={() => setOpen(o => !o)} style={{
@@ -1201,6 +1200,15 @@ export default function App() {
   const [formulaLeaving, setFormulaLeaving] = useState(false);
   const [showAI,         setShowAI]         = useState(false);
   const [mainView,       setMainView]       = useState("learn"); // "learn" | "problems"
+  const [sidebarOpen,    setSidebarOpen]    = useState(true);
+  const [isMobile,       setIsMobile]       = useState(window.innerWidth < 900);
+  const [showOnboarding, setShowOnboarding] = useState(() => !localStorage.getItem("phasora_onboarded"));
+
+  useEffect(() => {
+    const onResize = () => setIsMobile(window.innerWidth < 900);
+    window.addEventListener("resize", onResize);
+    return () => window.removeEventListener("resize", onResize);
+  }, []);
 
   // Right panel opens only for simulation now; formulas are a left overlay
   const panelOpen = showSim && mainView === "learn";
@@ -1233,6 +1241,38 @@ export default function App() {
   const visibleFormulas = formulaIds.length > 0
     ? FORMULAS.filter(f => formulaIds.includes(f.id))
     : FORMULAS;
+
+  if (isMobile) {
+    return (
+      <div style={{
+        height: "100vh", width: "100vw",
+        display: "flex", flexDirection: "column",
+        alignItems: "center", justifyContent: "center",
+        background: T.bg0, padding: "40px 32px", textAlign: "center",
+      }}>
+        <GlobalStyle />
+        <div style={{ fontFamily: T.mono, fontSize: 18, fontWeight: 500, letterSpacing: "0.18em", color: T.blue, marginBottom: 8 }}>
+          PHASORA
+        </div>
+        <div style={{ fontFamily: T.serif, fontStyle: "italic", fontSize: 13, color: T.text3, marginBottom: 32 }}>
+          Physics Canvas
+        </div>
+        <div style={{
+          padding: "28px 24px", background: T.bg1, borderRadius: 12,
+          border: `1px solid ${T.border}`, maxWidth: 360,
+          boxShadow: "0 2px 12px rgba(0,0,0,0.06)",
+        }}>
+          <div style={{ fontSize: 28, marginBottom: 12 }}>&#9000;</div>
+          <div style={{ fontSize: 16, fontWeight: 500, color: T.navy, marginBottom: 8 }}>
+            Desktop Required
+          </div>
+          <div style={{ fontSize: 13, color: T.text2, lineHeight: 1.7 }}>
+            Phasora's interactive simulations, formula explorer, and AI tutor are designed for screens 900px or wider. Please open this on a laptop or desktop for the full experience.
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div style={{
@@ -1319,71 +1359,91 @@ export default function App() {
 
         {/* LEFT SIDEBAR */}
         <aside style={{
-          width: 224, flexShrink: 0,
+          width: sidebarOpen ? 224 : 44, flexShrink: 0,
           background: T.bg1, borderRight: `1px solid ${T.border}`,
           display: "flex", flexDirection: "column", overflow: "hidden",
+          transition: "width 0.28s cubic-bezier(0.4,0,0.2,1)",
         }}>
-          <div style={{ padding: "14px 16px 10px", borderBottom: `1px solid ${T.border}` }}>
-            <div style={{ fontSize: 10, fontWeight: 600, color: T.text3, letterSpacing: "0.07em", textTransform: "uppercase" }}>
-              Classical Mechanics
-            </div>
-            <div style={{ fontSize: 14, color: T.text0, fontWeight: 500, marginTop: 3 }}>Topics</div>
+          <div style={{ padding: sidebarOpen ? "14px 16px 10px" : "14px 8px 10px", borderBottom: `1px solid ${T.border}`, display: "flex", justifyContent: "space-between", alignItems: "center", flexShrink: 0 }}>
+            {sidebarOpen && (
+              <div>
+                <div style={{ fontSize: 10, fontWeight: 600, color: T.text3, letterSpacing: "0.07em", textTransform: "uppercase" }}>
+                  Classical Mechanics
+                </div>
+                <div style={{ fontSize: 14, color: T.text0, fontWeight: 500, marginTop: 3 }}>Topics</div>
+              </div>
+            )}
+            <button
+              onClick={() => setSidebarOpen(s => !s)}
+              title={sidebarOpen ? "Collapse sidebar" : "Expand sidebar"}
+              style={{
+                width: 28, height: 28, borderRadius: 6,
+                display: "flex", alignItems: "center", justifyContent: "center",
+                color: T.text2, fontSize: 14, lineHeight: 1,
+                background: "transparent", transition: "background 0.15s",
+                flexShrink: 0, margin: sidebarOpen ? 0 : "0 auto",
+              }}
+              onMouseEnter={e => e.currentTarget.style.background = T.bg3}
+              onMouseLeave={e => e.currentTarget.style.background = "transparent"}
+            >{sidebarOpen ? "◂" : "▸"}</button>
           </div>
 
-          <div style={{ flex: 1, overflowY: "auto", paddingTop: 4 }}>
-            {CURRICULUM.map(group => (
-              <div key={group.id}>
-                <button
-                  onClick={() => group.active && setExpandedGroup(g => g === group.id ? null : group.id)}
-                  style={{
-                    width: "100%", textAlign: "left",
-                    padding: "9px 16px",
-                    display: "flex", justifyContent: "space-between", alignItems: "center",
-                    fontSize: 13, fontWeight: 500,
-                    color: group.active ? T.text0 : T.text3,
-                    background: expandedGroup === group.id && group.active ? T.blueLight : "none",
-                    borderLeft: `2px solid ${expandedGroup === group.id && group.active ? T.blue : "transparent"}`,
-                    cursor: group.active ? "pointer" : "default",
-                    transition: "all 0.15s",
-                  }}
-                >
-                  {group.label}
-                  {group.active
-                    ? <span style={{ fontSize: 12, color: T.text3 }}>{expandedGroup === group.id ? "▾" : "▸"}</span>
-                    : <span style={{ fontSize: 9, color: T.text3, background: T.bg3, padding: "1px 6px", borderRadius: 3 }}>Soon</span>
-                  }
-                </button>
-
-                {expandedGroup === group.id && group.concepts.map(c => (
-                  <button key={c.id}
-                    onClick={() => {
-                      setActiveConcept(c.id);
-                      if (mainView !== "learn") setMainView("learn");
-                    }}
+          {sidebarOpen && (
+            <div style={{ flex: 1, overflowY: "auto", paddingTop: 4 }}>
+              {CURRICULUM.map(group => (
+                <div key={group.id}>
+                  <button
+                    onClick={() => group.active && setExpandedGroup(g => g === group.id ? null : group.id)}
                     style={{
                       width: "100%", textAlign: "left",
-                      padding: "7px 16px 7px 30px",
-                      fontSize: 13,
-                      color: activeConcept === c.id ? T.blue : T.text1,
-                      background: activeConcept === c.id ? T.blueGlow : "none",
-                      borderLeft: `2px solid ${activeConcept === c.id ? T.blue : "transparent"}`,
-                      cursor: "pointer",
+                      padding: "9px 16px",
                       display: "flex", justifyContent: "space-between", alignItems: "center",
-                      transition: "all 0.12s",
+                      fontSize: 13, fontWeight: 500,
+                      color: group.active ? T.text0 : T.text3,
+                      background: expandedGroup === group.id && group.active ? T.blueLight : "none",
+                      borderLeft: `2px solid ${expandedGroup === group.id && group.active ? T.blue : "transparent"}`,
+                      cursor: group.active ? "pointer" : "default",
+                      transition: "all 0.15s",
                     }}
                   >
-                    {c.label}
-                    {c.hasViz && (
-                      <span style={{
-                        fontSize: 9, color: T.teal, background: T.tealLight,
-                        padding: "1px 6px", borderRadius: 3, fontWeight: 500,
-                      }}>viz</span>
-                    )}
+                    {group.label}
+                    {group.active
+                      ? <span style={{ fontSize: 12, color: T.text3 }}>{expandedGroup === group.id ? "▾" : "▸"}</span>
+                      : <span style={{ fontSize: 9, color: T.text3, background: T.bg3, padding: "1px 6px", borderRadius: 3 }}>Coming Soon</span>
+                    }
                   </button>
-                ))}
-              </div>
-            ))}
-          </div>
+
+                  {expandedGroup === group.id && group.concepts.map(c => (
+                    <button key={c.id}
+                      onClick={() => {
+                        setActiveConcept(c.id);
+                        if (mainView !== "learn") setMainView("learn");
+                      }}
+                      style={{
+                        width: "100%", textAlign: "left",
+                        padding: "7px 16px 7px 30px",
+                        fontSize: 13,
+                        color: activeConcept === c.id ? T.blue : T.text1,
+                        background: activeConcept === c.id ? T.blueGlow : "none",
+                        borderLeft: `2px solid ${activeConcept === c.id ? T.blue : "transparent"}`,
+                        cursor: "pointer",
+                        display: "flex", justifyContent: "space-between", alignItems: "center",
+                        transition: "all 0.12s",
+                      }}
+                    >
+                      {c.label}
+                      {c.hasViz && (
+                        <span style={{
+                          fontSize: 9, color: T.teal, background: T.tealLight,
+                          padding: "1px 6px", borderRadius: 3, fontWeight: 500,
+                        }}>viz</span>
+                      )}
+                    </button>
+                  ))}
+                </div>
+              ))}
+            </div>
+          )}
         </aside>
 
         {/* FORMULA OVERLAY — slides in from left over the sidebar */}
@@ -1436,7 +1496,7 @@ export default function App() {
             {/* Formula cards */}
             <div style={{ flex: 1, overflowY: "auto", padding: "12px 12px" }}>
               {visibleFormulas.length > 0
-                ? visibleFormulas.map(f => <FormulaCard key={f.id} formula={f} />)
+                ? visibleFormulas.map((f, i) => <FormulaCard key={f.id} formula={f} defaultOpen={i === 0} />)
                 : (
                   <div style={{ fontSize: 13, color: T.text3, padding: "20px 4px", textAlign: "center" }}>
                     No formulas for this topic yet.
@@ -1497,6 +1557,67 @@ export default function App() {
       {/* AI DRAWER */}
       {showAI && (
         <AIDrawer apiKey={API_KEY} onClose={() => setShowAI(false)} />
+      )}
+
+      {/* ONBOARDING OVERLAY */}
+      {showOnboarding && (
+        <>
+          <div style={{
+            position: "fixed", inset: 0,
+            background: "rgba(15,23,42,0.35)",
+            backdropFilter: "blur(4px)",
+            zIndex: 200,
+          }} />
+          <div style={{
+            position: "fixed", top: "50%", left: "50%",
+            transform: "translate(-50%, -50%)",
+            width: 440, background: T.bg1, borderRadius: 14,
+            border: `1px solid ${T.border}`,
+            boxShadow: "0 8px 40px rgba(15,23,42,0.18)",
+            zIndex: 201, padding: "36px 32px 28px",
+            animation: "fadeIn 0.3s ease",
+          }}>
+            <div style={{ fontFamily: T.mono, fontSize: 16, fontWeight: 500, letterSpacing: "0.18em", color: T.blue, marginBottom: 4 }}>
+              PHASORA
+            </div>
+            <div style={{ fontFamily: T.serif, fontStyle: "italic", fontSize: 13, color: T.text3, marginBottom: 20 }}>
+              Your interactive physics canvas
+            </div>
+            <div style={{ fontSize: 14, color: T.text1, lineHeight: 1.75, marginBottom: 22 }}>
+              Welcome! Here's how to get started:
+            </div>
+            {[
+              ["1", "Pick a topic", "Use the sidebar on the left to browse Classical Mechanics concepts."],
+              ["2", "Explore visually", "Click Simulation or Formulas in the toolbar to open interactive panels."],
+              ["3", "Practice", "Hit Problems to generate AI-powered practice questions with solutions."],
+              ["4", "Ask the tutor", "Click Ask Phasora anytime for physics explanations grounded in intuition."],
+            ].map(([n, title, desc]) => (
+              <div key={n} style={{ display: "flex", gap: 12, marginBottom: 14 }}>
+                <div style={{
+                  width: 26, height: 26, borderRadius: "50%", flexShrink: 0,
+                  background: T.blueGlow, border: `1px solid ${T.border2}`,
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                  fontFamily: T.mono, fontSize: 12, fontWeight: 600, color: T.blue,
+                }}>{n}</div>
+                <div>
+                  <div style={{ fontSize: 13, fontWeight: 600, color: T.navy }}>{title}</div>
+                  <div style={{ fontSize: 12, color: T.text2, lineHeight: 1.6 }}>{desc}</div>
+                </div>
+              </div>
+            ))}
+            <button
+              onClick={() => { localStorage.setItem("phasora_onboarded", "1"); setShowOnboarding(false); }}
+              style={{
+                width: "100%", marginTop: 10, padding: "10px 0",
+                borderRadius: 8, border: "none",
+                background: T.blue, color: "#fff",
+                fontSize: 13, fontWeight: 600,
+                cursor: "pointer",
+                boxShadow: "0 2px 10px rgba(29,78,216,0.22)",
+              }}
+            >Get Started</button>
+          </div>
+        </>
       )}
     </div>
   );

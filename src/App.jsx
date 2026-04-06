@@ -1740,23 +1740,25 @@ const CurriculumSidebar = ({
 
   return (
     <aside style={{
-      width: collapsed ? 50 : width,
+      width: collapsed ? 0 : width,
+      minWidth: collapsed ? 0 : undefined,
       flexShrink: 0,
       background: T.bg1,
-      borderRight: `1px solid ${T.border}`,
+      borderRight: collapsed ? "none" : `1px solid ${T.border}`,
       display: "flex",
       flexDirection: "column",
       overflow: "hidden",
-      transition: "width 0.25s ease",
+      transition: "width 0.22s ease",
     }}>
-      <div style={{
-        padding: collapsed ? "14px 8px 14px" : "16px 14px 14px",
-        borderBottom: `1px solid ${T.border}`,
-        display: "flex",
-        justifyContent: "space-between",
-        alignItems: "center",
-      }}>
-        {!collapsed && (
+      {!collapsed && (
+        <>
+          <div style={{
+            padding: "16px 14px 14px",
+            borderBottom: `1px solid ${T.border}`,
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+          }}>
           <div>
             <div style={{
               fontFamily: T.brandMono,
@@ -1772,146 +1774,144 @@ const CurriculumSidebar = ({
               Curriculum
             </div>
           </div>
-        )}
-        {onToggleCollapse && (
-          <button
-            aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
-            title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
-            onClick={onToggleCollapse}
-            onMouseEnter={() => setHoveredToggle(true)}
-            onMouseLeave={() => setHoveredToggle(false)}
-            style={{
-              width: 28,
-              height: 28,
-              borderRadius: 6,
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              color: T.text2,
-              fontSize: 18,
-              background: hoveredToggle ? T.bg2 : "transparent",
-              transition: "all 0.15s ease",
-              margin: collapsed ? "0 auto" : 0,
-            }}
-          >
-            <span style={{
-              display: "inline-block",
-              transform: `rotate(${collapsed ? "0deg" : "180deg"})`,
-              transition: "transform 0.2s ease",
-              lineHeight: 1,
-            }}>
-              ›
-            </span>
-          </button>
-        )}
-      </div>
+          {onToggleCollapse && (
+            <button
+              aria-label="Collapse sidebar"
+              title="Collapse sidebar"
+              onClick={onToggleCollapse}
+              onMouseEnter={() => setHoveredToggle(true)}
+              onMouseLeave={() => setHoveredToggle(false)}
+              style={{
+                width: 28,
+                height: 28,
+                borderRadius: 6,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                color: T.text2,
+                fontSize: 18,
+                background: hoveredToggle ? T.bg2 : "transparent",
+                transition: "all 0.15s ease",
+              }}
+            >
+              <span style={{
+                display: "inline-block",
+                transform: "rotate(180deg)",
+                transition: "transform 0.2s ease",
+                lineHeight: 1,
+              }}>
+                ›
+              </span>
+            </button>
+          )}
+          </div>
 
-      {!collapsed && (
-        <div style={{ flex: 1, overflowY: "auto", padding: "6px 0 10px" }}>
-          {CURRICULUM.map((group) => {
-            const groupExpanded = expandedGroup === group.id;
-            const canOpen = group.active;
+          <div style={{ flex: 1, overflowY: "auto", padding: "6px 0 10px" }}>
+            {CURRICULUM.map((group) => {
+              const groupExpanded = expandedGroup === group.id;
+              const canOpen = group.active;
 
-            return (
-              <div key={group.id}>
-                <button
-                  onClick={() => canOpen && setExpandedGroup((g) => g === group.id ? null : group.id)}
-                  title={!canOpen ? "Coming soon" : undefined}
-                  aria-expanded={canOpen ? groupExpanded : undefined}
-                  style={{
-                    width: "100%",
-                    textAlign: "left",
-                    padding: "10px 14px",
-                    display: "flex",
-                    justifyContent: "space-between",
-                    alignItems: "center",
-                    gap: 8,
-                    fontFamily: T.brandMono,
-                    fontSize: 10,
-                    lineHeight: 1.4,
-                    letterSpacing: "0.12em",
-                    textTransform: "uppercase",
-                    color: !canOpen ? T.text2 : groupExpanded ? T.text1 : T.text2,
-                    background: "transparent",
-                    borderBottom: `1px solid ${T.border}`,
-                    opacity: canOpen ? 1 : 0.35,
-                    cursor: canOpen ? "pointer" : "default",
-                    transition: "all 0.15s ease",
-                  }}
-                >
-                  <span style={{
-                    flex: 1,
-                    minWidth: 0,
-                    overflow: "hidden",
-                    textOverflow: "ellipsis",
-                    whiteSpace: "nowrap",
-                  }}>
-                    {group.label}
-                  </span>
-                  {canOpen && (
+              return (
+                <div key={group.id}>
+                  <button
+                    onClick={() => canOpen && setExpandedGroup((g) => g === group.id ? null : group.id)}
+                    title={!canOpen ? "Coming soon" : undefined}
+                    aria-expanded={canOpen ? groupExpanded : undefined}
+                    style={{
+                      width: "100%",
+                      textAlign: "left",
+                      padding: "10px 14px",
+                      display: "flex",
+                      justifyContent: "space-between",
+                      alignItems: "center",
+                      gap: 8,
+                      fontFamily: T.brandMono,
+                      fontSize: 10,
+                      lineHeight: 1.4,
+                      letterSpacing: "0.12em",
+                      textTransform: "uppercase",
+                      color: !canOpen ? T.text2 : groupExpanded ? T.text1 : T.text2,
+                      background: "transparent",
+                      borderBottom: `1px solid ${T.border}`,
+                      opacity: canOpen ? 1 : 0.35,
+                      cursor: canOpen ? "pointer" : "default",
+                      transition: "all 0.15s ease",
+                    }}
+                  >
                     <span style={{
-                      fontSize: 16,
-                      color: T.text3,
-                      lineHeight: 1,
-                      display: "inline-block",
-                      transform: groupExpanded ? "rotate(90deg)" : "rotate(0deg)",
-                      transition: "transform 0.2s ease",
+                      flex: 1,
+                      minWidth: 0,
+                      overflow: "hidden",
+                      textOverflow: "ellipsis",
+                      whiteSpace: "nowrap",
                     }}>
-                      ›
+                      {group.label}
                     </span>
-                  )}
-                </button>
+                    {canOpen && (
+                      <span style={{
+                        fontSize: 16,
+                        color: T.text3,
+                        lineHeight: 1,
+                        display: "inline-block",
+                        transform: groupExpanded ? "rotate(90deg)" : "rotate(0deg)",
+                        transition: "transform 0.2s ease",
+                      }}>
+                        ›
+                      </span>
+                    )}
+                  </button>
 
-                <div style={{
-                  overflow: "hidden",
-                  maxHeight: groupExpanded ? 500 : 0,
-                  opacity: groupExpanded ? 1 : 0,
-                  transition: groupExpanded
-                    ? "max-height 0.25s ease, opacity 0.2s ease"
-                    : "max-height 0.25s ease, opacity 0.1s ease",
-                }}>
-                  {group.concepts.map((concept) => {
-                    const active = activeConcept === concept.id;
-                    const conceptHover = hoveredConcept === concept.id;
-                    return (
-                      <button
-                        key={concept.id}
-                        onClick={() => onSelectConcept(concept.id)}
-                        onMouseEnter={() => setHoveredConcept(concept.id)}
-                        onMouseLeave={() => setHoveredConcept(null)}
-                        style={{
-                          width: "100%",
-                          textAlign: "left",
-                          padding: "7px 14px 7px 24px",
-                          fontSize: 13,
-                          lineHeight: 1.65,
-                          color: active ? T.blue : T.text1,
-                          background: active
-                            ? "rgba(29, 78, 216, 0.06)"
-                            : conceptHover
-                              ? "rgba(0,0,0,0.04)"
-                              : "transparent",
-                          borderLeft: `2px solid ${active ? T.blue : "transparent"}`,
-                          cursor: "pointer",
-                          transition: "all 0.15s ease",
-                        }}
-                      >
-                        <span style={{
-                          display: "block",
-                          overflow: "hidden",
-                          textOverflow: "ellipsis",
-                          whiteSpace: "nowrap",
-                        }}>
-                          {concept.label}
-                        </span>
-                      </button>
-                    );
-                  })}
+                  <div style={{
+                    overflow: "hidden",
+                    maxHeight: groupExpanded ? 500 : 0,
+                    opacity: groupExpanded ? 1 : 0,
+                    transition: groupExpanded
+                      ? "max-height 0.25s ease, opacity 0.2s ease"
+                      : "max-height 0.25s ease, opacity 0.1s ease",
+                  }}>
+                    {group.concepts.map((concept) => {
+                      const active = activeConcept === concept.id;
+                      const conceptHover = hoveredConcept === concept.id;
+                      return (
+                        <button
+                          key={concept.id}
+                          onClick={() => onSelectConcept(concept.id)}
+                          onMouseEnter={() => setHoveredConcept(concept.id)}
+                          onMouseLeave={() => setHoveredConcept(null)}
+                          style={{
+                            width: "100%",
+                            textAlign: "left",
+                            padding: "7px 14px 7px 24px",
+                            fontSize: 13,
+                            lineHeight: 1.65,
+                            color: active ? T.blue : T.text1,
+                            background: active
+                              ? "rgba(29, 78, 216, 0.06)"
+                              : conceptHover
+                                ? "rgba(0,0,0,0.04)"
+                                : "transparent",
+                            borderLeft: `2px solid ${active ? T.blue : "transparent"}`,
+                            cursor: "pointer",
+                            transition: "all 0.15s ease",
+                          }}
+                        >
+                          <span style={{
+                            display: "block",
+                            overflow: "hidden",
+                            textOverflow: "ellipsis",
+                            whiteSpace: "nowrap",
+                          }}>
+                            {concept.label}
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
                 </div>
-              </div>
-            );
-          })}
-        </div>
+              );
+            })}
+          </div>
+        </>
       )}
     </aside>
   );
@@ -2266,6 +2266,7 @@ export default function App() {
   const [showTutor, setShowTutor] = useState(false);
   const [canvasView, setCanvasView] = useState("learn"); // learn | problems
   const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [hoverSidebarOpenToggle, setHoverSidebarOpenToggle] = useState(false);
   const [sidebarWidth, setSidebarWidth] = useState(PANEL_DEFAULTS.sidebar);
   const [conceptWidth, setConceptWidth] = useState(PANEL_DEFAULTS.concept);
   const [formulaWidth, setFormulaWidth] = useState(PANEL_DEFAULTS.formulas);
@@ -2334,9 +2335,9 @@ export default function App() {
   const showConceptOnlyInConstrained = constrainedCanvas && showConceptInTightLayout;
   const vizMode = activeConcept === "sho" ? "sho" : "projectile";
   const isDragging = activeHandle !== null;
-  const sidebarUsedWidth = sidebarOpen
+  const sidebarUsedWidth = (sidebarOpen || activeMode !== "canvas")
     ? clamp(sidebarWidth, PANEL_LIMITS.sidebar.min, PANEL_LIMITS.sidebar.max)
-    : 50;
+    : 0;
 
   const getSidebarMax = useCallback(() => {
     const rightOccupied = (activeMode === "canvas" && showFormulas ? formulaWidth : 0)
@@ -2364,9 +2365,9 @@ export default function App() {
     clamp(mainContentWidth - 260, PANEL_LIMITS.concept.min, PANEL_LIMITS.concept.max)
   ), [mainContentWidth]);
 
-  const sidebarRenderWidth = sidebarOpen
+  const sidebarRenderWidth = (sidebarOpen || activeMode !== "canvas")
     ? clamp(sidebarWidth, PANEL_LIMITS.sidebar.min, getSidebarMax())
-    : 50;
+    : 0;
   const formulaRenderWidth = showFormulas
     ? clamp(formulaWidth, PANEL_LIMITS.formulas.min, getFormulaMax())
     : 0;
@@ -2618,7 +2619,39 @@ export default function App() {
       )}
 
       {activeMode === "canvas" && (
-        <div style={{ flex: 1, display: "flex", overflow: "hidden" }}>
+        <div style={{ flex: 1, display: "flex", overflow: "hidden", position: "relative" }}>
+          {!sidebarOpen && (
+            <button
+              aria-label="Open curriculum"
+              title="Open curriculum"
+              onClick={() => setSidebarOpen(true)}
+              onMouseEnter={() => setHoverSidebarOpenToggle(true)}
+              onMouseLeave={() => setHoverSidebarOpenToggle(false)}
+              style={{
+                position: "absolute",
+                top: 12,
+                left: 12,
+                zIndex: 50,
+                width: 28,
+                height: 28,
+                borderRadius: 6,
+                background: T.bg1,
+                border: `1px solid ${hoverSidebarOpenToggle ? T.blueDim : T.border}`,
+                boxShadow: hoverSidebarOpenToggle
+                  ? "0 2px 8px rgba(0,0,0,0.12)"
+                  : "0 1px 4px rgba(0,0,0,0.08)",
+                color: T.blue,
+                fontSize: 18,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                transition: "all 0.15s ease",
+                animation: "fadeIn 0.2s ease 0.08s both",
+              }}
+            >
+              ›
+            </button>
+          )}
           <div style={{ position: "relative", display: "flex", height: "100%", flexShrink: 0 }}>
             <div style={{ pointerEvents: isDragging ? "none" : "auto" }}>
               <CurriculumSidebar

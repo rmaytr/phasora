@@ -50,8 +50,9 @@ const T = {
 
 const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
 
-// ─── API KEY (configured via .env.local — not exposed in UI) ──────────────────
-const API_KEY = import.meta.env.VITE_ANTHROPIC_API_KEY || "";
+// ─── API KEY (configured via .env / .env.local — not exposed in UI) ───────────
+const API_KEY = import.meta.env.VITE_ANTHROPIC_KEY;
+const API_KEY_MISSING_MESSAGE = "API key not found. Add VITE_ANTHROPIC_KEY=your-key to your .env file and restart the dev server.";
 
 // ─── GLOBAL STYLES ────────────────────────────────────────────────────────────
 const GlobalStyle = () => (
@@ -991,7 +992,7 @@ const FormulaCard = ({ formula, defaultOpen = false }) => {
 };
 
 // ─── PROBLEMS TAB ─────────────────────────────────────────────────────────────
-const ProblemsTab = ({ apiKey }) => {
+const ProblemsTab = () => {
   const [topic,      setTopic]      = useState("projectile");
   const [difficulty, setDifficulty] = useState("intermediate");
   const [problem,    setProblem]    = useState(null);
@@ -999,7 +1000,7 @@ const ProblemsTab = ({ apiKey }) => {
   const [showSol,    setShowSol]    = useState(false);
 
   const generate = async () => {
-    if (!apiKey) { setProblem({ noKey: true }); return; }
+    if (!API_KEY) { setProblem({ noKey: true }); return; }
     setLoading(true); setProblem(null); setShowSol(false);
 
     const topicMap = {
@@ -1019,7 +1020,7 @@ const ProblemsTab = ({ apiKey }) => {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "x-api-key": apiKey,
+          "x-api-key": API_KEY,
           "anthropic-version": "2023-06-01",
           "anthropic-dangerous-direct-browser-access": "true",
         },
@@ -1097,7 +1098,7 @@ Return ONLY valid JSON (no markdown, no backticks) in this exact structure:
 
       {problem?.noKey && (
         <div style={{ padding: 14, background: T.bg2, borderRadius: 8, border: `1px solid ${T.border}`, fontSize: 13, color: T.text1 }}>
-          AI features are not configured. Set <code>VITE_ANTHROPIC_API_KEY</code> in your <code>.env.local</code> file.
+          {API_KEY_MISSING_MESSAGE}
         </div>
       )}
       {problem?.error && (
@@ -1178,7 +1179,7 @@ Rules:
 
 Current domain: Classical Mechanics.`;
 
-const TutorPanel = ({ apiKey, starterPrompts = [], minHeight = 0 }) => {
+const TutorPanel = ({ starterPrompts = [], minHeight = 0 }) => {
   const [msgs, setMsgs] = useState([
     {
       role: "assistant",
@@ -1216,8 +1217,8 @@ const TutorPanel = ({ apiKey, starterPrompts = [], minHeight = 0 }) => {
     setMsgs((m) => [...m, { role: "user", text: userMsg }]);
     setLoading(true);
 
-    if (!apiKey) {
-      setMsgs((m) => [...m, { role: "assistant", text: "AI features are not configured - no API key found." }]);
+    if (!API_KEY) {
+      setMsgs((m) => [...m, { role: "assistant", text: API_KEY_MISSING_MESSAGE }]);
       setLoading(false);
       return;
     }
@@ -1233,7 +1234,7 @@ const TutorPanel = ({ apiKey, starterPrompts = [], minHeight = 0 }) => {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "x-api-key": apiKey,
+          "x-api-key": API_KEY,
           "anthropic-version": "2023-06-01",
           "anthropic-dangerous-direct-browser-access": "true",
         },
@@ -1733,8 +1734,10 @@ const CurriculumSidebar = ({
   onSelectConcept,
   width = 240,
   collapsed = false,
+  onClose = null,
 }) => {
   const [hoveredConcept, setHoveredConcept] = useState(null);
+  const [hoverClose, setHoverClose] = useState(false);
 
   return (
     <aside style={{
@@ -1755,6 +1758,7 @@ const CurriculumSidebar = ({
             padding: "16px 14px 14px",
             borderBottom: `1px solid ${T.border}`,
             display: "flex",
+            justifyContent: "space-between",
             alignItems: "center",
           }}>
             <div>
@@ -1772,6 +1776,23 @@ const CurriculumSidebar = ({
                 Curriculum
               </div>
             </div>
+            {onClose && (
+              <button
+                aria-label="Close topics panel"
+                onClick={onClose}
+                onMouseEnter={() => setHoverClose(true)}
+                onMouseLeave={() => setHoverClose(false)}
+                style={{
+                  padding: "4px 6px",
+                  color: hoverClose ? T.text0 : T.text2,
+                  fontSize: 16,
+                  lineHeight: 1,
+                  transition: "all 0.15s ease",
+                }}
+              >
+                ×
+              </button>
+            )}
           </div>
 
           <div style={{ flex: 1, overflowY: "auto", padding: "6px 0 10px" }}>
@@ -2611,6 +2632,7 @@ export default function App() {
                 setExpandedGroup={setExpandedGroup}
                 onSelectConcept={selectConcept}
                 collapsed={!sidebarOpen}
+                onClose={() => setSidebarOpen(false)}
                 width={sidebarRenderWidth}
               />
             </div>
@@ -2723,7 +2745,7 @@ export default function App() {
                   <p style={{ fontSize: 14, color: T.text2, marginBottom: 28, lineHeight: 1.75 }}>
                     AI-generated physics problems with step-by-step solutions. Select a topic and difficulty, then generate.
                   </p>
-                  <ProblemsTab apiKey={API_KEY} />
+                  <ProblemsTab />
                 </div>
               </div>
             ) : (
@@ -2882,7 +2904,7 @@ export default function App() {
                   </button>
                 </div>
                 <div style={{ flex: 1, minHeight: 0, padding: 12, overflow: "hidden" }}>
-                  <TutorPanel apiKey={API_KEY} minHeight={0} />
+                  <TutorPanel minHeight={0} />
                 </div>
               </div>
             )}
@@ -2944,7 +2966,7 @@ export default function App() {
                 padding: "22px 22px 24px",
                 boxShadow: "0 6px 18px rgba(15,23,42,0.06)",
               }}>
-                <ProblemsTab apiKey={API_KEY} />
+                <ProblemsTab />
               </div>
             </div>
           </div>
@@ -2983,7 +3005,7 @@ export default function App() {
                 Ask concept questions, request intuition, or get step-by-step help.
               </div>
               <div style={{ flex: 1, minHeight: 0 }}>
-                <TutorPanel apiKey={API_KEY} starterPrompts={TUTOR_STARTERS} minHeight={540} />
+                <TutorPanel starterPrompts={TUTOR_STARTERS} minHeight={540} />
               </div>
             </div>
           </div>

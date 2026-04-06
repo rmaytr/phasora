@@ -275,6 +275,10 @@ const CONCEPT_FORMULA_IDS = {
   sho:        ["f3", "f4"],
 };
 
+const VIZ_CONCEPT_IDS = new Set(
+  CURRICULUM.flatMap((group) => group.concepts.filter((concept) => concept.hasViz).map((concept) => concept.id))
+);
+
 // ─── SHARED SLIDER ───────────────────────────────────────────────────────────
 const SimSlider = ({ label, value, min, max, step, unit, decimals = 2, onChange }) => (
   <div style={{ marginBottom: 10 }}>
@@ -1328,7 +1332,6 @@ const CurriculumSidebar = ({
   collapsed = false,
   onToggleCollapse = null,
 }) => {
-  const [hoveredGroup, setHoveredGroup] = useState(null);
   const [hoveredConcept, setHoveredConcept] = useState(null);
   const [hoveredToggle, setHoveredToggle] = useState(false);
 
@@ -1344,7 +1347,7 @@ const CurriculumSidebar = ({
       transition: "width 0.25s ease",
     }}>
       <div style={{
-        padding: collapsed ? "14px 8px 12px" : "16px 14px 12px",
+        padding: collapsed ? "14px 8px 14px" : "16px 14px 14px",
         borderBottom: `1px solid ${T.border}`,
         display: "flex",
         justifyContent: "space-between",
@@ -1382,102 +1385,123 @@ const CurriculumSidebar = ({
               alignItems: "center",
               justifyContent: "center",
               color: T.text2,
-              fontSize: 13,
+              fontSize: 18,
               background: hoveredToggle ? T.bg2 : "transparent",
               transition: "all 0.15s ease",
               margin: collapsed ? "0 auto" : 0,
             }}
           >
-            {collapsed ? ">" : "<"}
+            <span style={{
+              display: "inline-block",
+              transform: `rotate(${collapsed ? "0deg" : "180deg"})`,
+              transition: "transform 0.2s ease",
+              lineHeight: 1,
+            }}>
+              ›
+            </span>
           </button>
         )}
       </div>
 
       {!collapsed && (
-        <div style={{ flex: 1, overflowY: "auto", padding: "8px 0 10px" }}>
+        <div style={{ flex: 1, overflowY: "auto", padding: "6px 0 10px" }}>
           {CURRICULUM.map((group) => {
             const groupExpanded = expandedGroup === group.id;
-            const groupHover = hoveredGroup === group.id;
             const canOpen = group.active;
 
             return (
-              <div key={group.id} style={{ marginBottom: 2 }}>
+              <div key={group.id}>
                 <button
                   onClick={() => canOpen && setExpandedGroup((g) => g === group.id ? null : group.id)}
-                  disabled={!canOpen}
-                  onMouseEnter={() => canOpen && setHoveredGroup(group.id)}
-                  onMouseLeave={() => setHoveredGroup(null)}
+                  title={!canOpen ? "Coming soon" : undefined}
+                  aria-expanded={canOpen ? groupExpanded : undefined}
                   style={{
                     width: "100%",
                     textAlign: "left",
-                    padding: "11px 14px",
+                    padding: "10px 14px",
                     display: "flex",
                     justifyContent: "space-between",
                     alignItems: "center",
                     fontFamily: T.brandMono,
-                    fontSize: 11,
-                    lineHeight: 1.5,
-                    letterSpacing: "0.07em",
+                    fontSize: 10,
+                    lineHeight: 1.4,
+                    letterSpacing: "0.12em",
                     textTransform: "uppercase",
-                    color: canOpen ? T.text1 : T.text2,
-                    borderLeft: `2px solid ${groupExpanded && canOpen ? T.blue : "transparent"}`,
-                    background: canOpen && (groupExpanded || groupHover) ? T.bg2 : "transparent",
-                    opacity: canOpen ? 1 : 0.4,
+                    color: !canOpen ? T.text2 : groupExpanded ? T.text1 : T.text2,
+                    background: "transparent",
+                    borderBottom: `1px solid ${T.border}`,
+                    opacity: canOpen ? 1 : 0.35,
                     cursor: canOpen ? "pointer" : "default",
                     transition: "all 0.15s ease",
                   }}
                 >
                   <span>{group.label}</span>
-                  {canOpen ? (
-                    <span style={{ fontSize: 11, color: T.text3 }}>{groupExpanded ? "v" : ">"}</span>
-                  ) : (
-                    <span style={{ fontSize: 9, letterSpacing: "0.08em" }}>COMING SOON</span>
+                  {canOpen && (
+                    <span style={{
+                      fontSize: 16,
+                      color: T.text3,
+                      lineHeight: 1,
+                      display: "inline-block",
+                      transform: groupExpanded ? "rotate(90deg)" : "rotate(0deg)",
+                      transition: "transform 0.2s ease",
+                    }}>
+                      ›
+                    </span>
                   )}
                 </button>
 
-                {groupExpanded && group.concepts.map((concept) => {
-                  const active = activeConcept === concept.id;
-                  const conceptHover = hoveredConcept === concept.id;
-                  return (
-                    <button
-                      key={concept.id}
-                      onClick={() => onSelectConcept(concept.id)}
-                      onMouseEnter={() => setHoveredConcept(concept.id)}
-                      onMouseLeave={() => setHoveredConcept(null)}
-                      style={{
-                        width: "100%",
-                        textAlign: "left",
-                        padding: "10px 14px 10px 26px",
-                        fontSize: 13,
-                        lineHeight: 1.55,
-                        color: active ? T.blue : T.text1,
-                        background: active ? T.blueLight : conceptHover ? T.bg2 : "transparent",
-                        borderLeft: `2px solid ${active ? T.blue : "transparent"}`,
-                        cursor: "pointer",
-                        display: "flex",
-                        justifyContent: "space-between",
-                        alignItems: "center",
-                        transition: "all 0.15s ease",
-                      }}
-                    >
-                      <span>{concept.label}</span>
-                      {concept.hasViz && (
-                        <span style={{
-                          fontSize: 9,
-                          color: T.teal,
-                          background: T.tealLight,
-                          padding: "2px 7px",
-                          borderRadius: 999,
-                          fontFamily: T.brandMono,
-                          letterSpacing: "0.06em",
-                          textTransform: "uppercase",
-                        }}>
-                          VIZ
-                        </span>
-                      )}
-                    </button>
-                  );
-                })}
+                <div style={{
+                  overflow: "hidden",
+                  maxHeight: groupExpanded ? 500 : 0,
+                  opacity: groupExpanded ? 1 : 0,
+                  transition: groupExpanded
+                    ? "max-height 0.25s ease, opacity 0.2s ease"
+                    : "max-height 0.25s ease, opacity 0.1s ease",
+                }}>
+                  {group.concepts.map((concept) => {
+                    const active = activeConcept === concept.id;
+                    const conceptHover = hoveredConcept === concept.id;
+                    return (
+                      <button
+                        key={concept.id}
+                        onClick={() => onSelectConcept(concept.id)}
+                        onMouseEnter={() => setHoveredConcept(concept.id)}
+                        onMouseLeave={() => setHoveredConcept(null)}
+                        title={concept.hasViz ? "Has visualization" : undefined}
+                        style={{
+                          width: "100%",
+                          textAlign: "left",
+                          padding: "7px 14px 7px 24px",
+                          fontSize: 13,
+                          lineHeight: 1.65,
+                          color: active ? T.blue : T.text1,
+                          background: active
+                            ? "rgba(29, 78, 216, 0.06)"
+                            : conceptHover
+                              ? "rgba(0,0,0,0.04)"
+                              : "transparent",
+                          borderLeft: `2px solid ${active ? T.blue : "transparent"}`,
+                          cursor: "pointer",
+                          display: "flex",
+                          justifyContent: "space-between",
+                          alignItems: "center",
+                          transition: "all 0.15s ease",
+                        }}
+                      >
+                        <span>{concept.label}</span>
+                        {concept.hasViz && (
+                          <span style={{
+                            width: 6,
+                            height: 6,
+                            borderRadius: "50%",
+                            background: T.teal,
+                            flexShrink: 0,
+                          }} />
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
             );
           })}
@@ -1805,8 +1829,16 @@ export default function App() {
   };
 
   const selectConcept = (conceptId) => {
+    const hasVisualization = VIZ_CONCEPT_IDS.has(conceptId);
     setActiveConcept(conceptId);
-    if (activeMode === "canvas" && canvasView !== "learn") setCanvasView("learn");
+    if (activeMode === "canvas") {
+      if (canvasView !== "learn") setCanvasView("learn");
+      if (hasVisualization) {
+        setShowSim(true);
+        setShowFormulas(false);
+        setFormulaLeaving(false);
+      }
+    }
   };
 
   const openMode = (mode) => {

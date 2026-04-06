@@ -265,19 +265,47 @@ const FORMULAS = [
   },
 ];
 
-// ─── FORMULA → CONCEPT MAPPING ────────────────────────────────────────────────
-const CONCEPT_FORMULA_IDS = {
-  motion1d:   ["f1"],
-  projectile: ["f1"],
-  velocity:   ["f1"],
-  newton1:    ["f2"],
-  friction:   ["f2"],
-  sho:        ["f3", "f4"],
-};
-
 const VIZ_CONCEPT_IDS = new Set(
   CURRICULUM.flatMap((group) => group.concepts.filter((concept) => concept.hasViz).map((concept) => concept.id))
 );
+
+const useResponsiveCanvasSize = (
+  containerRef,
+  { minWidth = 320, minHeight = 280, maxHeight = 420, ratio = 0.42 } = {}
+) => {
+  const [size, setSize] = useState({ width: 900, height: 380 });
+
+  useEffect(() => {
+    const node = containerRef.current;
+    if (!node) return;
+
+    const updateSize = (rect) => {
+      const nextWidth = Math.max(minWidth, Math.floor(rect.width));
+      const nextHeight = Math.min(maxHeight, Math.max(minHeight, Math.floor(nextWidth * ratio)));
+      setSize((prev) => (
+        prev.width === nextWidth && prev.height === nextHeight
+          ? prev
+          : { width: nextWidth, height: nextHeight }
+      ));
+    };
+
+    updateSize(node.getBoundingClientRect());
+
+    if (typeof ResizeObserver !== "undefined") {
+      const observer = new ResizeObserver((entries) => {
+        entries.forEach((entry) => updateSize(entry.contentRect));
+      });
+      observer.observe(node);
+      return () => observer.disconnect();
+    }
+
+    const onResize = () => updateSize(node.getBoundingClientRect());
+    window.addEventListener("resize", onResize);
+    return () => window.removeEventListener("resize", onResize);
+  }, [containerRef, minWidth, minHeight, maxHeight, ratio]);
+
+  return size;
+};
 
 // ─── SHARED SLIDER ───────────────────────────────────────────────────────────
 const SimSlider = ({ label, value, min, max, step, unit, decimals = 2, onChange }) => (
@@ -305,10 +333,17 @@ const SimSlider = ({ label, value, min, max, step, unit, decimals = 2, onChange 
 // ─── SPRING-MASS SIMULATION ───────────────────────────────────────────────────
 const SHOSim = () => {
   const canvasRef = useRef(null);
+  const canvasContainerRef = useRef(null);
   const stateRef = useRef({ t: 0, running: true });
   const animRef  = useRef(null);
   const [params, setParams] = useState({ mass: 1.0, k: 8.0, damping: 0.1, amplitude: 80 });
   const [readouts, setReadouts] = useState({ x: "0.000", v: "0.000", ke: "0.00", pe: "0.00" });
+  const canvasSize = useResponsiveCanvasSize(canvasContainerRef, {
+    minWidth: 320,
+    minHeight: 300,
+    maxHeight: 420,
+    ratio: 0.42,
+  });
 
   const omega  = Math.sqrt(params.k / params.mass);
   const period = (2 * Math.PI / omega).toFixed(2);
@@ -317,10 +352,10 @@ const SHOSim = () => {
     const canvas = canvasRef.current;
     if (!canvas) return;
     const ctx = canvas.getContext("2d");
-    const W = canvas.width, H = canvas.height;
-    const cx = W * 0.52, cy = H * 0.44;
 
     const draw = () => {
+      const W = canvas.width, H = canvas.height;
+      const cx = W * 0.52, cy = H * 0.44;
       const s = stateRef.current;
       if (s.running) s.t += 0.016;
 
@@ -459,7 +494,7 @@ const SHOSim = () => {
 
     animRef.current = requestAnimationFrame(draw);
     return () => cancelAnimationFrame(animRef.current);
-  }, [params, omega, period]);
+  }, [params, omega, period, canvasSize.width, canvasSize.height]);
 
   const reset  = useCallback(() => { stateRef.current.t = 0; }, []);
   const toggle = useCallback(() => { stateRef.current.running = !stateRef.current.running; }, []);
@@ -471,9 +506,9 @@ const SHOSim = () => {
 
   return (
     <div style={{ display: "flex", flexDirection: "column", height: "100%", minHeight: 0, gap: 10 }}>
-      <div style={{ flex: 1, minHeight: 320 }}>
-        <canvas ref={canvasRef} width={920} height={380}
-          style={{ width: "100%", height: "100%", minHeight: 380, borderRadius: 8, border: `1px solid ${T.border}` }} />
+      <div ref={canvasContainerRef} style={{ flex: 1, minHeight: 300 }}>
+        <canvas ref={canvasRef} width={canvasSize.width} height={canvasSize.height}
+          style={{ width: "100%", height: canvasSize.height, borderRadius: 8, border: `1px solid ${T.border}` }} />
       </div>
       <div style={{ display: "flex", gap: 8 }}>
         <button onClick={toggle} style={{
@@ -532,10 +567,17 @@ const SHOSim = () => {
 // ─── PROJECTILE SIMULATION ────────────────────────────────────────────────────
 const ProjectileSim = () => {
   const canvasRef = useRef(null);
+  const canvasContainerRef = useRef(null);
   const animRef   = useRef(null);
   const [params, setParams] = useState({ angle: 45, v0: 20, g: 9.81 });
   const [running, setRunning] = useState(true);
   const tRef = useRef(0);
+  const canvasSize = useResponsiveCanvasSize(canvasContainerRef, {
+    minWidth: 320,
+    minHeight: 300,
+    maxHeight: 420,
+    ratio: 0.42,
+  });
 
   const angleRad = params.angle * Math.PI / 180;
   const vx   = params.v0 * Math.cos(angleRad);
@@ -689,7 +731,7 @@ const ProjectileSim = () => {
     const canvas = canvasRef.current;
     if (!canvas) return;
     drawFrame(canvas.getContext("2d"), canvas.width, canvas.height, 0);
-  }, [params, drawFrame]);
+  }, [params, drawFrame, canvasSize.width, canvasSize.height]);
 
   const onProjSlider = useCallback((param, value) => {
     setRunning(false);
@@ -698,9 +740,9 @@ const ProjectileSim = () => {
 
   return (
     <div style={{ display: "flex", flexDirection: "column", height: "100%", minHeight: 0, gap: 10 }}>
-      <div style={{ flex: 1, minHeight: 320 }}>
-        <canvas ref={canvasRef} width={920} height={380}
-          style={{ width: "100%", height: "100%", minHeight: 380, borderRadius: 8, border: `1px solid ${T.border}` }} />
+      <div ref={canvasContainerRef} style={{ flex: 1, minHeight: 300 }}>
+        <canvas ref={canvasRef} width={canvasSize.width} height={canvasSize.height}
+          style={{ width: "100%", height: canvasSize.height, borderRadius: 8, border: `1px solid ${T.border}` }} />
       </div>
       <button onClick={() => setRunning(true)} style={{
         width: "100%", padding: "9px 0", borderRadius: 999,
@@ -1263,56 +1305,6 @@ const ConceptView = ({ conceptId, compact = false, library = false }) => {
     </div>
   );
 };
-const AIDrawer = ({ apiKey, onClose }) => {
-  const [hoverClose, setHoverClose] = useState(false);
-
-  return (
-    <>
-      <div
-        onClick={onClose}
-        style={{
-          position: "fixed", inset: 0,
-          background: "rgba(15,23,42,0.18)",
-          backdropFilter: "blur(2px)",
-          zIndex: 98,
-        }}
-      />
-      <div style={{
-        position: "fixed", top: 0, right: 0, bottom: 0,
-        width: 388, background: T.bg1,
-        borderLeft: `1px solid ${T.border}`,
-        zIndex: 99, display: "flex", flexDirection: "column",
-        animation: "drawerIn 0.28s cubic-bezier(0.4,0,0.2,1)",
-        boxShadow: "-6px 0 32px rgba(15,23,42,0.1)",
-      }}>
-        <div style={{
-          display: "flex", justifyContent: "space-between", alignItems: "center",
-          padding: "14px 16px", borderBottom: `1px solid ${T.border}`, flexShrink: 0,
-        }}>
-          <div>
-            <div style={{ fontSize: 13, fontWeight: 600, color: T.blue }}>Phasora Tutor</div>
-            <div style={{ fontSize: 11, color: T.text3, marginTop: 2 }}>Physics-grounded � Always explains why</div>
-          </div>
-          <button
-            aria-label="Close tutor drawer"
-            onClick={onClose}
-            onMouseEnter={() => setHoverClose(true)}
-            onMouseLeave={() => setHoverClose(false)}
-            style={{
-              width: 30, height: 30, borderRadius: 6,
-              display: "flex", alignItems: "center", justifyContent: "center",
-              color: T.text2, fontSize: 20, lineHeight: 1,
-              background: hoverClose ? T.bg3 : "transparent", transition: "all 0.15s ease",
-            }}
-          >�</button>
-        </div>
-        <div style={{ flex: 1, overflow: "hidden", display: "flex", flexDirection: "column", padding: 14 }}>
-          <TutorPanel apiKey={apiKey} />
-        </div>
-      </div>
-    </>
-  );
-};
 const TUTOR_STARTERS = [
   "Why does acceleration stay constant in free fall?",
   "Explain Newton's second law like I am new to vectors.",
@@ -1645,23 +1637,38 @@ const TopNav = ({
   activeMode,
   onGoHome,
   showSim,
-  showFormulas,
   canvasView,
   onToggleSim,
-  onToggleFormulas,
   onToggleProblems,
-  showAI,
-  onToggleAI,
+  showFormulas,
+  onToggleFormulas,
+  showTutor,
+  onToggleTutor,
 }) => {
   const [hoverWordmark, setHoverWordmark] = useState(false);
   const [hoverTab, setHoverTab] = useState(null);
-  const [hoverTutor, setHoverTutor] = useState(false);
+  const [hoverUtility, setHoverUtility] = useState(null);
 
   const tabs = [
     { id: "visualize", label: "VISUALIZE", active: canvasView === "learn" && showSim, onClick: onToggleSim },
-    { id: "formulas", label: "FORMULAS", active: canvasView === "learn" && showFormulas, onClick: onToggleFormulas },
     { id: "problems", label: "PROBLEMS", active: canvasView === "problems", onClick: onToggleProblems },
   ];
+
+  const utilityBtnStyle = (active, hover) => ({
+    display: "flex",
+    alignItems: "center",
+    gap: 6,
+    padding: "5px 14px",
+    borderRadius: 20,
+    border: `1px solid ${active ? T.blue : T.border}`,
+    background: active ? T.blueLight : hover ? T.bg2 : T.bg1,
+    color: active ? T.blue : T.text1,
+    fontFamily: T.brandMono,
+    fontSize: 10,
+    letterSpacing: "0.08em",
+    textTransform: "uppercase",
+    transition: "all 0.15s ease",
+  });
 
   return (
     <nav style={{
@@ -1737,26 +1744,24 @@ const TopNav = ({
       <div style={{ flex: 1 }} />
 
       {activeMode === "canvas" && (
-        <button
-          onClick={onToggleAI}
-          onMouseEnter={() => setHoverTutor(true)}
-          onMouseLeave={() => setHoverTutor(false)}
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: 6,
-            padding: "8px 15px",
-            borderRadius: 999,
-            border: `1px solid ${hoverTutor || showAI ? T.blue : T.blueDim}`,
-            background: hoverTutor || showAI ? T.blueLight : T.bg1,
-            color: T.blue,
-            fontSize: 12,
-            fontWeight: 500,
-            transition: "all 0.15s ease",
-          }}
-        >
-          Ask Phasora
-        </button>
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <button
+            onClick={onToggleFormulas}
+            onMouseEnter={() => setHoverUtility("formulas")}
+            onMouseLeave={() => setHoverUtility(null)}
+            style={utilityBtnStyle(showFormulas, hoverUtility === "formulas")}
+          >
+            ⊞ Formulas
+          </button>
+          <button
+            onClick={onToggleTutor}
+            onMouseEnter={() => setHoverUtility("tutor")}
+            onMouseLeave={() => setHoverUtility(null)}
+            style={utilityBtnStyle(showTutor, hoverUtility === "tutor")}
+          >
+            ◈ Ask Phasora
+          </button>
+        </div>
       )}
     </nav>
   );
@@ -1793,12 +1798,14 @@ export default function App() {
   const [expandedGroup, setExpandedGroup] = useState("kinematics");
   const [showSim, setShowSim] = useState(false);
   const [showFormulas, setShowFormulas] = useState(false);
-  const [formulaLeaving, setFormulaLeaving] = useState(false);
-  const [showAI, setShowAI] = useState(false);
+  const [showTutor, setShowTutor] = useState(false);
   const [canvasView, setCanvasView] = useState("learn"); // learn | problems
   const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [mainContentWidth, setMainContentWidth] = useState(0);
+  const [showConceptInTightLayout, setShowConceptInTightLayout] = useState(false);
   const [isMobile, setIsMobile] = useState(window.innerWidth < 900);
   const [showOnboarding, setShowOnboarding] = useState(() => !localStorage.getItem("phasora_onboarded"));
+  const mainContentRef = useRef(null);
 
   useEffect(() => {
     const onResize = () => setIsMobile(window.innerWidth < 900);
@@ -1806,32 +1813,46 @@ export default function App() {
     return () => window.removeEventListener("resize", onResize);
   }, []);
 
-  const panelOpen = showSim && canvasView === "learn";
-  const vizMode = activeConcept === "sho" ? "sho" : "projectile";
+  useEffect(() => {
+    const node = mainContentRef.current;
+    if (!node) return;
 
-  const closeFormulas = () => {
-    setFormulaLeaving(true);
-    setTimeout(() => {
-      setShowFormulas(false);
-      setFormulaLeaving(false);
-    }, 270);
-  };
+    const updateWidth = (width) => {
+      const next = Math.floor(width);
+      setMainContentWidth((prev) => (prev === next ? prev : next));
+    };
+
+    updateWidth(node.getBoundingClientRect().width);
+
+    if (typeof ResizeObserver !== "undefined") {
+      const observer = new ResizeObserver((entries) => {
+        entries.forEach((entry) => updateWidth(entry.contentRect.width));
+      });
+      observer.observe(node);
+      return () => observer.disconnect();
+    }
+
+    const onResize = () => updateWidth(node.getBoundingClientRect().width);
+    window.addEventListener("resize", onResize);
+    return () => window.removeEventListener("resize", onResize);
+  }, [activeMode, showFormulas, showTutor, sidebarOpen]);
+
+  const panelOpen = showSim && canvasView === "learn";
+  const constrainedCanvas = panelOpen && mainContentWidth > 0 && mainContentWidth < 700;
+  const showConceptOnlyInConstrained = constrainedCanvas && showConceptInTightLayout;
+  const vizMode = activeConcept === "sho" ? "sho" : "projectile";
 
   const toggleSim = () => {
     if (canvasView !== "learn") setCanvasView("learn");
+    setShowConceptInTightLayout(false);
     setShowSim((s) => !s);
   };
 
-  const toggleFormulas = () => {
-    if (canvasView !== "learn") setCanvasView("learn");
-    if (showFormulas) {
-      closeFormulas();
-    } else {
-      setShowFormulas(true);
-    }
-  };
+  const toggleFormulas = () => setShowFormulas((s) => !s);
+  const toggleTutor = () => setShowTutor((s) => !s);
 
   const toggleCanvasProblems = () => {
+    setShowConceptInTightLayout(false);
     setCanvasView((v) => v === "problems" ? "learn" : "problems");
   };
 
@@ -1841,9 +1862,8 @@ export default function App() {
     if (activeMode === "canvas") {
       if (canvasView !== "learn") setCanvasView("learn");
       if (hasVisualization) {
+        setShowConceptInTightLayout(false);
         setShowSim(true);
-        setShowFormulas(false);
-        setFormulaLeaving(false);
       }
     }
   };
@@ -1851,9 +1871,8 @@ export default function App() {
   const openMode = (mode) => {
     setActiveMode(mode);
     if (mode !== "canvas") {
-      setShowAI(false);
       setShowFormulas(false);
-      setFormulaLeaving(false);
+      setShowTutor(false);
     }
     if (mode === "canvas") {
       setCanvasView("learn");
@@ -1861,11 +1880,6 @@ export default function App() {
   };
 
   const goHome = () => openMode("home");
-
-  const formulaIds = CONCEPT_FORMULA_IDS[activeConcept] || [];
-  const visibleFormulas = formulaIds.length > 0
-    ? FORMULAS.filter((f) => formulaIds.includes(f.id))
-    : FORMULAS;
 
   if (isMobile) {
     return (
@@ -1915,12 +1929,12 @@ export default function App() {
           onGoHome={goHome}
           showSim={showSim}
           showFormulas={showFormulas}
+          showTutor={showTutor}
           canvasView={canvasView}
           onToggleSim={toggleSim}
           onToggleFormulas={toggleFormulas}
           onToggleProblems={toggleCanvasProblems}
-          showAI={showAI}
-          onToggleAI={() => setShowAI((v) => !v)}
+          onToggleTutor={toggleTutor}
         />
       )}
 
@@ -1940,131 +1954,231 @@ export default function App() {
             width={244}
           />
 
-          {showFormulas && (
-            <div style={{
-              position: "fixed",
-              top: 56,
-              left: 0,
-              bottom: 0,
-              width: 332,
-              background: T.bg1,
-              borderRight: `1px solid ${T.border}`,
-              zIndex: 50,
-              display: "flex",
-              flexDirection: "column",
-              overflow: "hidden",
-              boxShadow: "4px 0 24px rgba(15,23,42,0.10)",
-              animation: formulaLeaving
-                ? "slideOutToLeft 0.27s cubic-bezier(0.4,0,0.2,1) forwards"
-                : "slideInFromLeft 0.27s cubic-bezier(0.4,0,0.2,1) forwards",
-            }}>
+          <div style={{
+            width: showFormulas ? 300 : 0,
+            flexShrink: 0,
+            overflow: "hidden",
+            transition: "width 0.25s ease",
+          }}>
+            {showFormulas && (
               <div style={{
-                padding: "14px 16px 10px",
-                borderBottom: `1px solid ${T.border}`,
-                display: "flex",
-                justifyContent: "space-between",
-                alignItems: "center",
-                flexShrink: 0,
-              }}>
-                <div>
-                  <div style={{ fontSize: 10, fontWeight: 600, color: T.text3, letterSpacing: "0.07em", textTransform: "uppercase" }}>
-                    Formula Sheet
-                  </div>
-                  <div style={{ fontSize: 14, color: T.text0, fontWeight: 500, marginTop: 3 }}>
-                    {CONCEPT_TEXT[activeConcept]?.title || "All Formulas"}
-                  </div>
-                </div>
-                <button
-                  aria-label="Close formula sheet"
-                  onClick={closeFormulas}
-                  onMouseEnter={e => e.currentTarget.style.background = T.bg3}
-                  onMouseLeave={e => e.currentTarget.style.background = "transparent"}
-                  style={{
-                    width: 28,
-                    height: 28,
-                    borderRadius: 6,
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    color: T.text2,
-                    fontSize: 18,
-                    lineHeight: 1,
-                    background: "transparent",
-                    transition: "background 0.15s",
-                  }}
-                >
-                  ×
-                </button>
-              </div>
-
-              <div style={{ flex: 1, overflowY: "auto", padding: "12px 12px" }}>
-                {visibleFormulas.length > 0
-                  ? visibleFormulas.map((f, i) => <FormulaCard key={f.id} formula={f} defaultOpen={i === 0} />)
-                  : (
-                    <div style={{ fontSize: 13, color: T.text3, padding: "20px 4px", textAlign: "center" }}>
-                      No formulas for this topic yet.
-                    </div>
-                  )
-                }
-              </div>
-            </div>
-          )}
-
-          {canvasView === "problems" ? (
-            <div className="fadeIn" style={{ flex: 1, overflowY: "auto", padding: "40px 48px" }}>
-              <div style={{ maxWidth: 760, margin: "0 auto" }}>
-                <div style={{ fontSize: 10, fontWeight: 600, color: T.blue, letterSpacing: "0.1em", textTransform: "uppercase", marginBottom: 10 }}>
-                  Practice
-                </div>
-                <h1 style={{ fontFamily: T.serif, fontStyle: "italic", fontSize: 30, color: T.navy, marginBottom: 10, fontWeight: 400 }}>
-                  Practice Problems
-                </h1>
-                <p style={{ fontSize: 14, color: T.text2, marginBottom: 28, lineHeight: 1.75, maxWidth: 620 }}>
-                  AI-generated physics problems with step-by-step solutions. Select a topic and difficulty, then generate.
-                </p>
-                <ProblemsTab apiKey={API_KEY} />
-              </div>
-            </div>
-          ) : (
-            <div style={{ flex: 1, display: "flex", overflow: "hidden", height: "100%" }}>
-              <div style={{
-                flexShrink: 0,
-                width: panelOpen ? "44%" : "100%",
-                transition: "width 0.35s cubic-bezier(0.4,0,0.2,1)",
+                width: 300,
                 height: "100%",
-                overflowY: "auto",
-                overflowX: "hidden",
-                borderRight: panelOpen ? `1px solid ${T.border}` : "none",
                 background: T.bg1,
-                boxShadow: panelOpen ? "2px 0 8px rgba(0,0,0,0.04)" : "none",
-                zIndex: panelOpen ? 1 : "auto",
+                borderRight: `1px solid ${T.border}`,
+                display: "flex",
+                flexDirection: "column",
               }}>
-                <ConceptView conceptId={activeConcept} compact={panelOpen} />
-              </div>
-
-              <div style={{
-                flex: 1,
-                minWidth: 0,
-                overflowY: "auto",
-                overflowX: "hidden",
-                height: "100%",
-                background: T.bg0,
-              }}>
-                {panelOpen && (
+                <div style={{
+                  padding: "12px 14px",
+                  borderBottom: `1px solid ${T.border}`,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  flexShrink: 0,
+                }}>
                   <div style={{
-                    animation: "slideInRight 0.3s ease",
-                    padding: "20px 22px 18px",
-                    minWidth: 0,
-                    height: "100%",
-                    display: "flex",
-                    flexDirection: "column",
+                    fontFamily: T.brandMono,
+                    fontSize: 10,
+                    color: T.text2,
+                    letterSpacing: "0.09em",
+                    textTransform: "uppercase",
                   }}>
-                    {vizMode === "sho" ? <SHOSim /> : <ProjectileSim />}
+                    Formula Reference
+                  </div>
+                  <button
+                    aria-label="Close formula panel"
+                    onClick={() => setShowFormulas(false)}
+                    style={{
+                      width: 26,
+                      height: 26,
+                      borderRadius: 6,
+                      color: T.text2,
+                      fontSize: 16,
+                      lineHeight: 1,
+                      transition: "all 0.15s ease",
+                    }}
+                  >
+                    ×
+                  </button>
+                </div>
+                <div style={{ flex: 1, minHeight: 0, overflowY: "auto", padding: "12px 12px 14px" }}>
+                  {FORMULAS.map((formula) => (
+                    <FormulaCard key={formula.id} formula={formula} />
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+
+          <div
+            ref={mainContentRef}
+            style={{
+              flex: 1,
+              minWidth: 0,
+              display: "flex",
+              overflow: "hidden",
+              transition: "all 0.25s ease",
+            }}
+          >
+            {canvasView === "problems" ? (
+              <div className="fadeIn" style={{ flex: 1, overflowY: "auto", padding: "40px 34px" }}>
+                <div style={{ maxWidth: 720, margin: "0 auto" }}>
+                  <div style={{ fontSize: 10, fontWeight: 600, color: T.blue, letterSpacing: "0.1em", textTransform: "uppercase", marginBottom: 10 }}>
+                    Practice
+                  </div>
+                  <h1 style={{ fontFamily: T.serif, fontStyle: "italic", fontSize: 30, color: T.navy, marginBottom: 10, fontWeight: 400 }}>
+                    Practice Problems
+                  </h1>
+                  <p style={{ fontSize: 14, color: T.text2, marginBottom: 28, lineHeight: 1.75 }}>
+                    AI-generated physics problems with step-by-step solutions. Select a topic and difficulty, then generate.
+                  </p>
+                  <ProblemsTab apiKey={API_KEY} />
+                </div>
+              </div>
+            ) : (
+              <div style={{ flex: 1, display: "flex", overflow: "hidden", height: "100%" }}>
+                {(!panelOpen || showConceptOnlyInConstrained || !constrainedCanvas) && (
+                  <div style={{
+                    flexShrink: 0,
+                    width: panelOpen ? "clamp(280px, 38%, 420px)" : "100%",
+                    minWidth: panelOpen ? 280 : 0,
+                    maxWidth: panelOpen ? 420 : "none",
+                    transition: "all 0.25s ease",
+                    height: "100%",
+                    overflowY: "auto",
+                    overflowX: "hidden",
+                    borderRight: panelOpen && !constrainedCanvas ? `1px solid ${T.border}` : "none",
+                    background: T.bg1,
+                    boxShadow: panelOpen && !constrainedCanvas ? "2px 0 8px rgba(0,0,0,0.04)" : "none",
+                    zIndex: panelOpen ? 1 : "auto",
+                  }}>
+                    {constrainedCanvas && panelOpen && showConceptOnlyInConstrained && (
+                      <div style={{ padding: "12px 14px 0" }}>
+                        <button
+                          onClick={() => setShowConceptInTightLayout(false)}
+                          style={{
+                            padding: "5px 10px",
+                            borderRadius: 999,
+                            border: `1px solid ${T.border}`,
+                            background: T.bg1,
+                            color: T.text1,
+                            fontFamily: T.brandMono,
+                            fontSize: 10,
+                            letterSpacing: "0.06em",
+                            textTransform: "uppercase",
+                            transition: "all 0.15s ease",
+                          }}
+                        >
+                          Back To Simulation
+                        </button>
+                      </div>
+                    )}
+                    <ConceptView conceptId={activeConcept} compact={panelOpen} />
+                  </div>
+                )}
+
+                {panelOpen && (!constrainedCanvas || !showConceptOnlyInConstrained) && (
+                  <div style={{
+                    flex: 1,
+                    minWidth: 0,
+                    overflowY: "auto",
+                    overflowX: "hidden",
+                    height: "100%",
+                    background: T.bg0,
+                  }}>
+                    <div style={{
+                      animation: "slideInRight 0.3s ease",
+                      padding: "20px 22px 18px",
+                      minWidth: 0,
+                      height: "100%",
+                      display: "flex",
+                      flexDirection: "column",
+                    }}>
+                      {constrainedCanvas && (
+                        <div style={{ marginBottom: 8 }}>
+                          <button
+                            onClick={() => setShowConceptInTightLayout(true)}
+                            style={{
+                              padding: "5px 10px",
+                              borderRadius: 999,
+                              border: `1px solid ${T.border}`,
+                              background: T.bg1,
+                              color: T.text1,
+                              fontFamily: T.brandMono,
+                              fontSize: 10,
+                              letterSpacing: "0.06em",
+                              textTransform: "uppercase",
+                              transition: "all 0.15s ease",
+                            }}
+                          >
+                            Show Concept
+                          </button>
+                        </div>
+                      )}
+                      {vizMode === "sho" ? <SHOSim /> : <ProjectileSim />}
+                    </div>
                   </div>
                 )}
               </div>
-            </div>
-          )}
+            )}
+          </div>
+
+          <div style={{
+            width: showTutor ? 320 : 0,
+            flexShrink: 0,
+            overflow: "hidden",
+            transition: "width 0.25s ease",
+          }}>
+            {showTutor && (
+              <div style={{
+                width: 320,
+                height: "100%",
+                background: T.bg1,
+                borderLeft: `1px solid ${T.border}`,
+                boxShadow: "-2px 0 8px rgba(0,0,0,0.05)",
+                display: "flex",
+                flexDirection: "column",
+              }}>
+                <div style={{
+                  padding: "12px 14px",
+                  borderBottom: `1px solid ${T.border}`,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  flexShrink: 0,
+                }}>
+                  <div style={{
+                    fontFamily: T.brandMono,
+                    fontSize: 10,
+                    color: T.blue,
+                    letterSpacing: "0.09em",
+                    textTransform: "uppercase",
+                  }}>
+                    Phasora Tutor
+                  </div>
+                  <button
+                    aria-label="Close tutor panel"
+                    onClick={() => setShowTutor(false)}
+                    style={{
+                      width: 26,
+                      height: 26,
+                      borderRadius: 6,
+                      color: T.text2,
+                      fontSize: 16,
+                      lineHeight: 1,
+                      transition: "all 0.15s ease",
+                    }}
+                  >
+                    ×
+                  </button>
+                </div>
+                <div style={{ flex: 1, minHeight: 0, padding: 12, overflow: "hidden" }}>
+                  <TutorPanel apiKey={API_KEY} minHeight={0} />
+                </div>
+              </div>
+            )}
+          </div>
         </div>
       )}
       {activeMode === "library" && (
@@ -2148,10 +2262,6 @@ export default function App() {
             </div>
           </div>
         </div>
-      )}
-
-      {activeMode === "canvas" && showAI && (
-        <AIDrawer apiKey={API_KEY} onClose={() => setShowAI(false)} />
       )}
 
       {activeMode === "canvas" && showOnboarding && (

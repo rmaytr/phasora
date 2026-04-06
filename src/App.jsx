@@ -1,4 +1,4 @@
-import katex from 'katex'
+﻿import katex from 'katex'
 import 'katex/dist/katex.min.css'
 import { useState, useEffect, useRef, useCallback } from "react";
 
@@ -43,6 +43,9 @@ const T = {
   mono:       "'JetBrains Mono', monospace",
   serif:      "'Lora', Georgia, serif",
   sans:       "'Inter', system-ui, sans-serif",
+  brandMono:  "'IBM Plex Mono', monospace",
+  brandSerif: "'Libre Baskerville', Georgia, serif",
+  cardSans:   "'DM Sans', 'Inter', system-ui, sans-serif",
 };
 
 // ─── API KEY (configured via .env.local — not exposed in UI) ──────────────────
@@ -51,7 +54,7 @@ const API_KEY = import.meta.env.VITE_ANTHROPIC_API_KEY || "";
 // ─── GLOBAL STYLES ────────────────────────────────────────────────────────────
 const GlobalStyle = () => (
   <style>{`
-    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=Lora:ital,wght@0,400;0,600;1,400&family=JetBrains+Mono:wght@300;400;500&display=swap');
+    @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@300;400;500&family=Libre+Baskerville:ital,wght@0,400;1,400&family=Lora:ital,wght@0,400;0,600;1,400&display=swap');
 
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -975,16 +978,24 @@ Rules:
 
 Current domain: Classical Mechanics.`;
 
-const TutorPanel = ({ apiKey }) => {
-  const [msgs,    setMsgs]    = useState([{
-    role: "assistant",
-    text: "I'm Phasora. Ask me anything about the physics you're exploring — or say 'explain like I'm 5' for any concept.",
-  }]);
-  const [input,   setInput]   = useState("");
+const TutorPanel = ({ apiKey, starterPrompts = [], minHeight = 0 }) => {
+  const [msgs, setMsgs] = useState([
+    {
+      role: "assistant",
+      text: "I'm Phasora. Ask me anything about the physics you're exploring, or ask for an intuitive walk-through.",
+    }
+  ]);
+  const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
+  const [hoveredStarter, setHoveredStarter] = useState(null);
+  const [hoverSend, setHoverSend] = useState(false);
   const bottomRef = useRef(null);
+  const msgsRef = useRef(msgs);
 
-  useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: "smooth" }); }, [msgs]);
+  useEffect(() => {
+    msgsRef.current = msgs;
+    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [msgs]);
 
   const renderMsg = (text) => {
     const parts = text.split(/(\$[^$]+\$)/g);
@@ -996,20 +1007,26 @@ const TutorPanel = ({ apiKey }) => {
     });
   };
 
-  const send = async () => {
-    if (!input.trim() || loading) return;
-    const userMsg = input.trim();
+  const send = async (overrideText) => {
+    if (loading) return;
+    const userMsg = (overrideText ?? input).trim();
+    if (!userMsg) return;
+
     setInput("");
-    setMsgs(m => [...m, { role: "user", text: userMsg }]);
+    setMsgs((m) => [...m, { role: "user", text: userMsg }]);
     setLoading(true);
 
     if (!apiKey) {
-      setMsgs(m => [...m, { role: "assistant", text: "AI features are not configured — no API key found." }]);
-      setLoading(false); return;
+      setMsgs((m) => [...m, { role: "assistant", text: "AI features are not configured - no API key found." }]);
+      setLoading(false);
+      return;
     }
 
     try {
-      const history = msgs.map(m => ({ role: m.role === "assistant" ? "assistant" : "user", content: m.text }));
+      const history = msgsRef.current.map((m) => ({
+        role: m.role === "assistant" ? "assistant" : "user",
+        content: m.text,
+      }));
       history.push({ role: "user", content: userMsg });
 
       const res = await fetch("https://api.anthropic.com/v1/messages", {
@@ -1020,64 +1037,133 @@ const TutorPanel = ({ apiKey }) => {
           "anthropic-version": "2023-06-01",
           "anthropic-dangerous-direct-browser-access": "true",
         },
-        body: JSON.stringify({ model: "claude-sonnet-4-20250514", max_tokens: 600, system: TUTOR_SYSTEM, messages: history })
+        body: JSON.stringify({
+          model: "claude-sonnet-4-20250514",
+          max_tokens: 600,
+          system: TUTOR_SYSTEM,
+          messages: history
+        })
       });
       const data = await res.json();
-      setMsgs(m => [...m, { role: "assistant", text: data.content?.[0]?.text || "Something went wrong." }]);
+      setMsgs((m) => [...m, { role: "assistant", text: data.content?.[0]?.text || "Something went wrong." }]);
     } catch {
-      setMsgs(m => [...m, { role: "assistant", text: "API error — please try again." }]);
+      setMsgs((m) => [...m, { role: "assistant", text: "API error - please try again." }]);
     }
     setLoading(false);
   };
 
+  const startersVisible =
+    starterPrompts.length > 0 &&
+    msgs.length === 1 &&
+    msgs[0].role === "assistant";
+
   return (
-    <div style={{ display: "flex", flexDirection: "column", height: "100%", gap: 8 }}>
-      <div style={{ flex: 1, overflowY: "auto", display: "flex", flexDirection: "column", gap: 8, paddingRight: 2 }}>
+    <div style={{ display: "flex", flexDirection: "column", height: "100%", gap: 10, minHeight }}>
+      <div style={{
+        flex: 1,
+        minHeight: 0,
+        overflowY: "auto",
+        display: "flex",
+        flexDirection: "column",
+        gap: 10,
+        paddingRight: 4
+      }}>
         {msgs.map((m, i) => (
           <div key={i} style={{
-            padding: "9px 11px", borderRadius: 8, fontSize: 13, lineHeight: 1.65,
-            background: m.role === "user" ? T.blueGlow : T.bg2,
+            padding: "11px 14px",
+            borderRadius: 10,
+            fontSize: 13,
+            lineHeight: 1.72,
+            background: m.role === "user" ? T.blueLight : T.bg2,
             border: `1px solid ${m.role === "user" ? T.border2 : T.border}`,
-            color: m.role === "user" ? T.blue : T.text1,
+            color: m.role === "user" ? T.navy : T.text1,
             alignSelf: m.role === "user" ? "flex-end" : "flex-start",
-            maxWidth: "94%",
+            maxWidth: "95%"
           }}>
             {m.role === "assistant" && (
-              <div style={{ fontFamily: T.mono, fontSize: 9, color: T.text3, marginBottom: 4, letterSpacing: "0.1em" }}>PHASORA</div>
+              <div style={{ fontFamily: T.brandMono, fontSize: 9, color: T.text3, marginBottom: 5, letterSpacing: "0.11em" }}>
+                PHASORA
+              </div>
             )}
             {renderMsg(m.text)}
           </div>
         ))}
         {loading && (
-          <div style={{ padding: "8px 11px", background: T.bg2, border: `1px solid ${T.border}`,
-            borderRadius: 8, fontSize: 12, color: T.text3 }}>
-            thinking…
+          <div style={{
+            padding: "10px 14px",
+            background: T.bg2,
+            border: `1px solid ${T.border}`,
+            borderRadius: 10,
+            fontSize: 12,
+            color: T.text3
+          }}>
+            thinking...
           </div>
         )}
         <div ref={bottomRef} />
       </div>
 
-      <div style={{ display: "flex", gap: 6 }}>
+      {startersVisible && (
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+          {starterPrompts.map((prompt, i) => (
+            <button
+              key={prompt}
+              onClick={() => send(prompt)}
+              onMouseEnter={() => setHoveredStarter(i)}
+              onMouseLeave={() => setHoveredStarter(null)}
+              style={{
+                padding: "6px 11px",
+                borderRadius: 999,
+                border: `1px solid ${hoveredStarter === i ? T.blue : T.border}`,
+                background: hoveredStarter === i ? T.blueLight : T.bg1,
+                color: hoveredStarter === i ? T.blue : T.text2,
+                fontSize: 12,
+                transition: "all 0.15s ease"
+              }}
+            >
+              {prompt}
+            </button>
+          ))}
+        </div>
+      )}
+
+      <div style={{ display: "flex", gap: 8 }}>
         <input value={input} onChange={e => setInput(e.target.value)}
           onKeyDown={e => e.key === "Enter" && !e.shiftKey && send()}
-          placeholder="Ask anything about physics…"
+          placeholder="Ask anything about physics..."
           style={{
-            flex: 1, padding: "8px 10px", background: T.bg2,
-            border: `1px solid ${T.border2}`, borderRadius: 6,
-            color: T.text0, fontSize: 13, outline: "none",
+            flex: 1,
+            padding: "10px 11px",
+            background: T.bg2,
+            border: `1px solid ${T.border2}`,
+            borderRadius: 8,
+            color: T.text0,
+            fontSize: 13,
+            outline: "none",
+            transition: "border-color 0.15s ease"
           }}
         />
-        <button onClick={send} style={{
-          padding: "8px 16px", background: T.blue, borderRadius: 6,
-          color: "#fff", fontSize: 12, fontWeight: 500,
-        }}>Ask</button>
+        <button
+          onClick={() => send()}
+          onMouseEnter={() => setHoverSend(true)}
+          onMouseLeave={() => setHoverSend(false)}
+          style={{
+            padding: "10px 18px",
+            background: hoverSend ? T.blueDim : T.blue,
+            borderRadius: 8,
+            color: "#fff",
+            fontSize: 12,
+            fontWeight: 500,
+            transition: "all 0.15s ease"
+          }}
+        >
+          Ask
+        </button>
       </div>
     </div>
   );
 };
-
-// ─── CONCEPT VIEW ─────────────────────────────────────────────────────────────
-const ConceptView = ({ conceptId, compact }) => {
+const ConceptView = ({ conceptId, compact = false, library = false }) => {
   const c = CONCEPT_TEXT[conceptId];
 
   if (!c) return (
@@ -1086,9 +1172,15 @@ const ConceptView = ({ conceptId, compact }) => {
     </div>
   );
 
+  const outerPadding = library
+    ? "56px 64px 64px"
+    : compact
+      ? "34px 32px 36px"
+      : "56px 84px 64px";
+
   return (
     <div key={conceptId} className="fadeIn" style={{
-      padding: compact ? "32px 28px 32px 32px" : "56px 80px",
+      padding: outerPadding,
       transition: "padding 0.35s ease",
     }}>
       <div style={{
@@ -1100,41 +1192,41 @@ const ConceptView = ({ conceptId, compact }) => {
 
       <h1 style={{
         fontFamily: T.serif, fontStyle: "italic",
-        fontSize: compact ? 22 : 30, color: T.navy,
-        lineHeight: 1.25, marginBottom: 16, fontWeight: 400,
+        fontSize: library ? 34 : compact ? 24 : 30, color: T.navy,
+        lineHeight: 1.24, marginBottom: library ? 20 : 16, fontWeight: 400,
       }}>
         {c.title}
       </h1>
 
       <p style={{
-        fontSize: compact ? 13 : 15, color: T.text1,
-        lineHeight: 1.85, marginBottom: 28,
-        maxWidth: compact ? "100%" : 560,
+        fontSize: library ? 16 : compact ? 14 : 15, color: T.text1,
+        lineHeight: library ? 1.95 : 1.85, marginBottom: library ? 36 : 30,
+        maxWidth: library ? 760 : compact ? "100%" : 580,
       }}>
         {c.summary}
       </p>
 
       <div style={{
         background: T.blueLight, borderRadius: 10,
-        padding: "18px 22px", border: `1px solid ${T.border}`,
-        maxWidth: compact ? "100%" : 520,
+        padding: library ? "24px 28px" : "20px 24px", border: `1px solid ${T.border}`,
+        maxWidth: library ? 760 : compact ? "100%" : 560,
       }}>
         <div style={{
           fontSize: 10, fontWeight: 600, color: T.blue,
-          letterSpacing: "0.1em", textTransform: "uppercase", marginBottom: 14,
+          letterSpacing: "0.1em", textTransform: "uppercase", marginBottom: library ? 18 : 14,
         }}>
           Core Equations
         </div>
         {c.equations.map((eq, i) => (
           <div key={i} style={{
-            display: "flex", alignItems: "center", gap: 16,
-            padding: "10px 0",
+            display: "flex", alignItems: "center", gap: library ? 22 : 16,
+            padding: library ? "14px 0" : "11px 0",
             borderBottom: i < c.equations.length - 1 ? `1px solid ${T.border}` : "none",
           }}>
             <div style={{ minWidth: 0 }}>
-              <Katex tex={eq.tex} style={{ fontSize: 14, color: T.navy }} />
+              <Katex tex={eq.tex} style={{ fontSize: library ? 17 : 15, color: T.navy }} />
             </div>
-            <span style={{ fontSize: 12, color: T.text3, fontStyle: "italic", flex: 1 }}>
+            <span style={{ fontSize: library ? 14 : 13, color: T.text3, fontStyle: "italic", flex: 1 }}>
               {eq.label}
             </span>
           </div>
@@ -1143,65 +1235,538 @@ const ConceptView = ({ conceptId, compact }) => {
     </div>
   );
 };
+const AIDrawer = ({ apiKey, onClose }) => {
+  const [hoverClose, setHoverClose] = useState(false);
 
-// ─── AI DRAWER ────────────────────────────────────────────────────────────────
-const AIDrawer = ({ apiKey, onClose }) => (
-  <>
-    <div
-      onClick={onClose}
-      style={{
-        position: "fixed", inset: 0,
-        background: "rgba(15,23,42,0.18)",
-        backdropFilter: "blur(2px)",
-        zIndex: 98,
-      }}
-    />
-    <div style={{
-      position: "fixed", top: 0, right: 0, bottom: 0,
-      width: 368, background: T.bg1,
-      borderLeft: `1px solid ${T.border}`,
-      zIndex: 99, display: "flex", flexDirection: "column",
-      animation: "drawerIn 0.28s cubic-bezier(0.4,0,0.2,1)",
-      boxShadow: "-6px 0 32px rgba(15,23,42,0.1)",
+  return (
+    <>
+      <div
+        onClick={onClose}
+        style={{
+          position: "fixed", inset: 0,
+          background: "rgba(15,23,42,0.18)",
+          backdropFilter: "blur(2px)",
+          zIndex: 98,
+        }}
+      />
+      <div style={{
+        position: "fixed", top: 0, right: 0, bottom: 0,
+        width: 388, background: T.bg1,
+        borderLeft: `1px solid ${T.border}`,
+        zIndex: 99, display: "flex", flexDirection: "column",
+        animation: "drawerIn 0.28s cubic-bezier(0.4,0,0.2,1)",
+        boxShadow: "-6px 0 32px rgba(15,23,42,0.1)",
+      }}>
+        <div style={{
+          display: "flex", justifyContent: "space-between", alignItems: "center",
+          padding: "14px 16px", borderBottom: `1px solid ${T.border}`, flexShrink: 0,
+        }}>
+          <div>
+            <div style={{ fontSize: 13, fontWeight: 600, color: T.blue }}>Phasora Tutor</div>
+            <div style={{ fontSize: 11, color: T.text3, marginTop: 2 }}>Physics-grounded � Always explains why</div>
+          </div>
+          <button
+            aria-label="Close tutor drawer"
+            onClick={onClose}
+            onMouseEnter={() => setHoverClose(true)}
+            onMouseLeave={() => setHoverClose(false)}
+            style={{
+              width: 30, height: 30, borderRadius: 6,
+              display: "flex", alignItems: "center", justifyContent: "center",
+              color: T.text2, fontSize: 20, lineHeight: 1,
+              background: hoverClose ? T.bg3 : "transparent", transition: "all 0.15s ease",
+            }}
+          >�</button>
+        </div>
+        <div style={{ flex: 1, overflow: "hidden", display: "flex", flexDirection: "column", padding: 14 }}>
+          <TutorPanel apiKey={apiKey} />
+        </div>
+      </div>
+    </>
+  );
+};
+const TUTOR_STARTERS = [
+  "Why does acceleration stay constant in free fall?",
+  "Explain Newton's second law like I am new to vectors.",
+  "When do I use energy methods instead of force methods?",
+  "Can you walk me through projectile motion step by step?",
+];
+
+const MODE_CARDS = [
+  {
+    id: "canvas",
+    icon: "▦",
+    title: "Physics Canvas",
+    description: "Free exploration. Simulations, formulas, and AI tutor all in one place.",
+  },
+  {
+    id: "library",
+    icon: "☰",
+    title: "Topic Library",
+    description: "Structured curriculum. Read concepts, explore formulas, learn step by step.",
+  },
+  {
+    id: "problems",
+    icon: "∑",
+    title: "Problem Mode",
+    description: "Practice with AI-generated problems. Choose topic and difficulty.",
+  },
+  {
+    id: "tutor",
+    icon: "✦",
+    title: "AI Tutor",
+    description: "Ask anything about physics. Get intuitive explanations and worked examples.",
+  },
+];
+
+const CurriculumSidebar = ({
+  activeConcept,
+  expandedGroup,
+  setExpandedGroup,
+  onSelectConcept,
+  width = 240,
+  collapsed = false,
+  onToggleCollapse = null,
+}) => {
+  const [hoveredGroup, setHoveredGroup] = useState(null);
+  const [hoveredConcept, setHoveredConcept] = useState(null);
+  const [hoveredToggle, setHoveredToggle] = useState(false);
+
+  return (
+    <aside style={{
+      width: collapsed ? 50 : width,
+      flexShrink: 0,
+      background: T.bg1,
+      borderRight: `1px solid ${T.border}`,
+      display: "flex",
+      flexDirection: "column",
+      overflow: "hidden",
+      transition: "width 0.25s ease",
     }}>
       <div style={{
-        display: "flex", justifyContent: "space-between", alignItems: "center",
-        padding: "14px 16px", borderBottom: `1px solid ${T.border}`, flexShrink: 0,
+        padding: collapsed ? "14px 8px 12px" : "16px 14px 12px",
+        borderBottom: `1px solid ${T.border}`,
+        display: "flex",
+        justifyContent: "space-between",
+        alignItems: "center",
       }}>
-        <div>
-          <div style={{ fontSize: 13, fontWeight: 600, color: T.blue }}>Phasora Tutor</div>
-          <div style={{ fontSize: 11, color: T.text3, marginTop: 2 }}>Physics-grounded · Always explains why</div>
-        </div>
-        <button
-          onClick={onClose}
-          onMouseEnter={e => e.currentTarget.style.background = T.bg3}
-          onMouseLeave={e => e.currentTarget.style.background = "transparent"}
-          style={{
-            width: 30, height: 30, borderRadius: 6,
-            display: "flex", alignItems: "center", justifyContent: "center",
-            color: T.text2, fontSize: 20, lineHeight: 1,
-            background: "transparent", transition: "background 0.15s",
-          }}
-        >×</button>
+        {!collapsed && (
+          <div>
+            <div style={{
+              fontFamily: T.brandMono,
+              fontSize: 10,
+              fontWeight: 500,
+              color: T.text3,
+              letterSpacing: "0.1em",
+              textTransform: "uppercase",
+            }}>
+              Classical Mechanics
+            </div>
+            <div style={{ marginTop: 4, fontSize: 14, fontWeight: 500, color: T.text1 }}>
+              Curriculum
+            </div>
+          </div>
+        )}
+        {onToggleCollapse && (
+          <button
+            aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+            title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+            onClick={onToggleCollapse}
+            onMouseEnter={() => setHoveredToggle(true)}
+            onMouseLeave={() => setHoveredToggle(false)}
+            style={{
+              width: 28,
+              height: 28,
+              borderRadius: 6,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              color: T.text2,
+              fontSize: 13,
+              background: hoveredToggle ? T.bg2 : "transparent",
+              transition: "all 0.15s ease",
+              margin: collapsed ? "0 auto" : 0,
+            }}
+          >
+            {collapsed ? ">" : "<"}
+          </button>
+        )}
       </div>
-      <div style={{ flex: 1, overflow: "hidden", display: "flex", flexDirection: "column", padding: 14 }}>
-        <TutorPanel apiKey={apiKey} />
+
+      {!collapsed && (
+        <div style={{ flex: 1, overflowY: "auto", padding: "8px 0 10px" }}>
+          {CURRICULUM.map((group) => {
+            const groupExpanded = expandedGroup === group.id;
+            const groupHover = hoveredGroup === group.id;
+            const canOpen = group.active;
+
+            return (
+              <div key={group.id} style={{ marginBottom: 2 }}>
+                <button
+                  onClick={() => canOpen && setExpandedGroup((g) => g === group.id ? null : group.id)}
+                  disabled={!canOpen}
+                  onMouseEnter={() => canOpen && setHoveredGroup(group.id)}
+                  onMouseLeave={() => setHoveredGroup(null)}
+                  style={{
+                    width: "100%",
+                    textAlign: "left",
+                    padding: "11px 14px",
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "center",
+                    fontFamily: T.brandMono,
+                    fontSize: 11,
+                    lineHeight: 1.5,
+                    letterSpacing: "0.07em",
+                    textTransform: "uppercase",
+                    color: canOpen ? T.text1 : T.text2,
+                    borderLeft: `2px solid ${groupExpanded && canOpen ? T.blue : "transparent"}`,
+                    background: canOpen && (groupExpanded || groupHover) ? T.bg2 : "transparent",
+                    opacity: canOpen ? 1 : 0.4,
+                    cursor: canOpen ? "pointer" : "default",
+                    transition: "all 0.15s ease",
+                  }}
+                >
+                  <span>{group.label}</span>
+                  {canOpen ? (
+                    <span style={{ fontSize: 11, color: T.text3 }}>{groupExpanded ? "v" : ">"}</span>
+                  ) : (
+                    <span style={{ fontSize: 9, letterSpacing: "0.08em" }}>COMING SOON</span>
+                  )}
+                </button>
+
+                {groupExpanded && group.concepts.map((concept) => {
+                  const active = activeConcept === concept.id;
+                  const conceptHover = hoveredConcept === concept.id;
+                  return (
+                    <button
+                      key={concept.id}
+                      onClick={() => onSelectConcept(concept.id)}
+                      onMouseEnter={() => setHoveredConcept(concept.id)}
+                      onMouseLeave={() => setHoveredConcept(null)}
+                      style={{
+                        width: "100%",
+                        textAlign: "left",
+                        padding: "10px 14px 10px 26px",
+                        fontSize: 13,
+                        lineHeight: 1.55,
+                        color: active ? T.blue : T.text1,
+                        background: active ? T.blueLight : conceptHover ? T.bg2 : "transparent",
+                        borderLeft: `2px solid ${active ? T.blue : "transparent"}`,
+                        cursor: "pointer",
+                        display: "flex",
+                        justifyContent: "space-between",
+                        alignItems: "center",
+                        transition: "all 0.15s ease",
+                      }}
+                    >
+                      <span>{concept.label}</span>
+                      {concept.hasViz && (
+                        <span style={{
+                          fontSize: 9,
+                          color: T.teal,
+                          background: T.tealLight,
+                          padding: "2px 7px",
+                          borderRadius: 999,
+                          fontFamily: T.brandMono,
+                          letterSpacing: "0.06em",
+                          textTransform: "uppercase",
+                        }}>
+                          VIZ
+                        </span>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </aside>
+  );
+};
+const HomePage = ({ onSelectMode }) => {
+  const [hoveredCard, setHoveredCard] = useState(null);
+  return (
+    <div style={{
+      flex: 1,
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center",
+      padding: "40px 28px",
+      background: T.bg0,
+      overflowY: "auto",
+    }}>
+      <div style={{ width: "min(1140px, 100%)", margin: "0 auto" }}>
+        <div style={{ textAlign: "center", marginBottom: 34 }}>
+          <div style={{
+            fontFamily: T.brandMono,
+            fontSize: 52,
+            fontWeight: 500,
+            letterSpacing: "0.2em",
+            color: T.blue,
+            lineHeight: 1.1,
+          }}>
+            PHASORA
+          </div>
+          <div style={{
+            marginTop: 12,
+            fontFamily: T.brandSerif,
+            fontStyle: "italic",
+            fontSize: 24,
+            color: T.navy,
+          }}>
+            Physics, understood — not memorized.
+          </div>
+          <div style={{
+            marginTop: 10,
+            fontFamily: T.brandMono,
+            fontSize: 11,
+            textTransform: "uppercase",
+            letterSpacing: "0.08em",
+            color: T.text2,
+          }}>
+            Choose how you want to learn today.
+          </div>
+        </div>
+
+        <div style={{
+          display: "grid",
+          gridTemplateColumns: "repeat(auto-fit, minmax(230px, 1fr))",
+          gap: 16,
+        }}>
+          {MODE_CARDS.map((card) => {
+            const hover = hoveredCard === card.id;
+            return (
+              <button
+                key={card.id}
+                onClick={() => onSelectMode(card.id)}
+                onMouseEnter={() => setHoveredCard(card.id)}
+                onMouseLeave={() => setHoveredCard(null)}
+                style={{
+                  position: "relative",
+                  minHeight: 188,
+                  background: T.bg1,
+                  border: `1px solid ${T.border}`,
+                  borderRadius: 8,
+                  padding: 24,
+                  textAlign: "left",
+                  boxShadow: hover ? "0 8px 22px rgba(15,23,42,0.10)" : "0 1px 6px rgba(15,23,42,0.04)",
+                  transition: "all 0.2s ease",
+                  overflow: "hidden",
+                }}
+              >
+                <span style={{
+                  position: "absolute",
+                  left: 0,
+                  top: 0,
+                  bottom: 0,
+                  width: hover ? 4 : 0,
+                  background: T.blue,
+                  transition: "width 0.2s ease",
+                }} />
+                <div style={{
+                  width: 32,
+                  height: 32,
+                  borderRadius: 8,
+                  background: T.blueLight,
+                  color: T.blue,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  fontSize: 17,
+                  marginBottom: 14,
+                }}>
+                  {card.icon}
+                </div>
+                <div style={{
+                  fontFamily: T.cardSans,
+                  fontSize: 18,
+                  fontWeight: 600,
+                  color: T.navy,
+                  marginBottom: 8,
+                }}>
+                  {card.title}
+                </div>
+                <div style={{
+                  fontFamily: T.cardSans,
+                  fontSize: 14,
+                  color: T.text2,
+                  lineHeight: 1.7,
+                }}>
+                  {card.description}
+                </div>
+              </button>
+            );
+          })}
+        </div>
       </div>
     </div>
-  </>
-);
+  );
+};
 
-// ─── ROOT APP ─────────────────────────────────────────────────────────────────
+const TopNav = ({
+  activeMode,
+  onGoHome,
+  showSim,
+  showFormulas,
+  canvasView,
+  onToggleSim,
+  onToggleFormulas,
+  onToggleProblems,
+  showAI,
+  onToggleAI,
+}) => {
+  const [hoverWordmark, setHoverWordmark] = useState(false);
+  const [hoverTab, setHoverTab] = useState(null);
+  const [hoverTutor, setHoverTutor] = useState(false);
+
+  const tabs = [
+    { id: "visualize", label: "VISUALIZE", active: canvasView === "learn" && showSim, onClick: onToggleSim },
+    { id: "formulas", label: "FORMULAS", active: canvasView === "learn" && showFormulas, onClick: onToggleFormulas },
+    { id: "problems", label: "PROBLEMS", active: canvasView === "problems", onClick: onToggleProblems },
+  ];
+
+  return (
+    <nav style={{
+      display: "flex",
+      alignItems: "center",
+      minHeight: 56,
+      flexShrink: 0,
+      background: T.bg1,
+      borderBottom: `1px solid ${T.border}`,
+      padding: "0 18px",
+      gap: 14,
+      boxShadow: "0 1px 4px rgba(0,0,0,0.05)",
+    }}>
+      <button
+        onClick={onGoHome}
+        onMouseEnter={() => setHoverWordmark(true)}
+        onMouseLeave={() => setHoverWordmark(false)}
+        style={{
+          fontFamily: T.brandMono,
+          fontSize: 16,
+          fontWeight: 500,
+          letterSpacing: "0.18em",
+          color: T.blue,
+          opacity: hoverWordmark ? 0.76 : 1,
+          textDecoration: hoverWordmark ? "underline" : "none",
+          textUnderlineOffset: 3,
+          transition: "all 0.15s ease",
+          flexShrink: 0,
+        }}
+      >
+        PHASORA
+      </button>
+
+      {activeMode === "canvas" ? (
+        <div style={{
+          display: "flex",
+          gap: 8,
+          alignItems: "center",
+          background: T.bg2,
+          borderRadius: 999,
+          padding: 4,
+        }}>
+          {tabs.map((tab) => (
+            <button
+              key={tab.id}
+              onClick={tab.onClick}
+              onMouseEnter={() => setHoverTab(tab.id)}
+              onMouseLeave={() => setHoverTab(null)}
+              style={{
+                padding: "7px 14px",
+                borderRadius: 999,
+                fontFamily: T.brandMono,
+                fontSize: 11,
+                letterSpacing: "0.08em",
+                color: tab.active ? "#fff" : T.text2,
+                background: tab.active ? T.blue : hoverTab === tab.id ? T.bg1 : "transparent",
+                transition: "all 0.15s ease",
+              }}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
+      ) : (
+        <div style={{
+          fontFamily: T.brandMono,
+          fontSize: 11,
+          color: T.text3,
+          letterSpacing: "0.08em",
+          textTransform: "uppercase",
+        }}>
+          Topic Library
+        </div>
+      )}
+
+      <div style={{ flex: 1 }} />
+
+      {activeMode === "canvas" && (
+        <button
+          onClick={onToggleAI}
+          onMouseEnter={() => setHoverTutor(true)}
+          onMouseLeave={() => setHoverTutor(false)}
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 6,
+            padding: "8px 15px",
+            borderRadius: 999,
+            border: `1px solid ${showAI ? T.blue : T.border2}`,
+            background: showAI ? T.blue : hoverTutor ? T.bg3 : T.bg2,
+            color: showAI ? "#fff" : T.text1,
+            fontSize: 12,
+            fontWeight: 500,
+            transition: "all 0.15s ease",
+            boxShadow: showAI ? "0 2px 10px rgba(29,78,216,0.22)" : "none",
+          }}
+        >
+          Ask Phasora
+        </button>
+      )}
+    </nav>
+  );
+};
+
+const BackHomeButton = ({ onClick }) => {
+  const [hovered, setHovered] = useState(false);
+  return (
+    <button
+      aria-label="Return to home"
+      onClick={onClick}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+      style={{
+        padding: "8px 13px",
+        borderRadius: 8,
+        border: `1px solid ${hovered ? T.blue : T.border}`,
+        background: hovered ? T.blueLight : T.bg1,
+        color: hovered ? T.blue : T.text1,
+        fontSize: 12,
+        fontFamily: T.brandMono,
+        letterSpacing: "0.05em",
+        textTransform: "uppercase",
+        transition: "all 0.15s ease",
+      }}
+    >
+      ← Back Home
+    </button>
+  );
+};
 export default function App() {
-  const [activeConcept,  setActiveConcept]  = useState("projectile");
-  const [expandedGroup,  setExpandedGroup]  = useState("kinematics");
-  const [showSim,        setShowSim]        = useState(false);
-  const [showFormulas,   setShowFormulas]   = useState(false);
+  const [activeMode, setActiveMode] = useState("home"); // home | canvas | library | problems | tutor
+  const [activeConcept, setActiveConcept] = useState("projectile");
+  const [expandedGroup, setExpandedGroup] = useState("kinematics");
+  const [showSim, setShowSim] = useState(false);
+  const [showFormulas, setShowFormulas] = useState(false);
   const [formulaLeaving, setFormulaLeaving] = useState(false);
-  const [showAI,         setShowAI]         = useState(false);
-  const [mainView,       setMainView]       = useState("learn"); // "learn" | "problems"
-  const [sidebarOpen,    setSidebarOpen]    = useState(true);
-  const [isMobile,       setIsMobile]       = useState(window.innerWidth < 900);
+  const [showAI, setShowAI] = useState(false);
+  const [canvasView, setCanvasView] = useState("learn"); // learn | problems
+  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [isMobile, setIsMobile] = useState(window.innerWidth < 900);
   const [showOnboarding, setShowOnboarding] = useState(() => !localStorage.getItem("phasora_onboarded"));
 
   useEffect(() => {
@@ -1210,9 +1775,8 @@ export default function App() {
     return () => window.removeEventListener("resize", onResize);
   }, []);
 
-  // Right panel opens only for simulation now; formulas are a left overlay
-  const panelOpen = showSim && mainView === "learn";
-  const vizMode   = activeConcept === "sho" ? "sho" : "projectile";
+  const panelOpen = showSim && canvasView === "learn";
+  const vizMode = activeConcept === "sho" ? "sho" : "projectile";
 
   const closeFormulas = () => {
     setFormulaLeaving(true);
@@ -1223,12 +1787,12 @@ export default function App() {
   };
 
   const toggleSim = () => {
-    if (mainView !== "learn") setMainView("learn");
-    setShowSim(s => !s);
+    if (canvasView !== "learn") setCanvasView("learn");
+    setShowSim((s) => !s);
   };
 
   const toggleFormulas = () => {
-    if (mainView !== "learn") setMainView("learn");
+    if (canvasView !== "learn") setCanvasView("learn");
     if (showFormulas) {
       closeFormulas();
     } else {
@@ -1236,10 +1800,32 @@ export default function App() {
     }
   };
 
-  // Resolve which formula cards to show for the active concept
+  const toggleCanvasProblems = () => {
+    setCanvasView((v) => v === "problems" ? "learn" : "problems");
+  };
+
+  const selectConcept = (conceptId) => {
+    setActiveConcept(conceptId);
+    if (activeMode === "canvas" && canvasView !== "learn") setCanvasView("learn");
+  };
+
+  const openMode = (mode) => {
+    setActiveMode(mode);
+    if (mode !== "canvas") {
+      setShowAI(false);
+      setShowFormulas(false);
+      setFormulaLeaving(false);
+    }
+    if (mode === "canvas") {
+      setCanvasView("learn");
+    }
+  };
+
+  const goHome = () => openMode("home");
+
   const formulaIds = CONCEPT_FORMULA_IDS[activeConcept] || [];
   const visibleFormulas = formulaIds.length > 0
-    ? FORMULAS.filter(f => formulaIds.includes(f.id))
+    ? FORMULAS.filter((f) => formulaIds.includes(f.id))
     : FORMULAS;
 
   if (isMobile) {
@@ -1251,11 +1837,11 @@ export default function App() {
         background: T.bg0, padding: "40px 32px", textAlign: "center",
       }}>
         <GlobalStyle />
-        <div style={{ fontFamily: T.mono, fontSize: 18, fontWeight: 500, letterSpacing: "0.18em", color: T.blue, marginBottom: 8 }}>
+        <div style={{ fontFamily: T.brandMono, fontSize: 18, fontWeight: 500, letterSpacing: "0.18em", color: T.blue, marginBottom: 8 }}>
           PHASORA
         </div>
-        <div style={{ fontFamily: T.serif, fontStyle: "italic", fontSize: 13, color: T.text3, marginBottom: 32 }}>
-          Physics Canvas
+        <div style={{ fontFamily: T.brandSerif, fontStyle: "italic", fontSize: 13, color: T.text3, marginBottom: 32 }}>
+          Desktop learning environment
         </div>
         <div style={{
           padding: "28px 24px", background: T.bg1, borderRadius: 12,
@@ -1267,12 +1853,14 @@ export default function App() {
             Desktop Required
           </div>
           <div style={{ fontSize: 13, color: T.text2, lineHeight: 1.7 }}>
-            Phasora's interactive simulations, formula explorer, and AI tutor are designed for screens 900px or wider. Please open this on a laptop or desktop for the full experience.
+            Phasora's simulations and structured study layouts are designed for screens 900px or wider.
           </div>
         </div>
       </div>
     );
   }
+
+  const showTopNav = activeMode === "canvas" || activeMode === "library";
 
   return (
     <div style={{
@@ -1282,285 +1870,244 @@ export default function App() {
     }}>
       <GlobalStyle />
 
-      {/* ── TOP NAV ── */}
-      <nav style={{
-        display: "flex", alignItems: "center",
-        height: 52, flexShrink: 0,
-        background: T.bg1, borderBottom: `1px solid ${T.border}`,
-        padding: "0 20px", gap: 12,
-        boxShadow: "0 1px 4px rgba(0,0,0,0.05)",
-      }}>
-        {/* Logo */}
-        <div style={{ display: "flex", alignItems: "baseline", gap: 8, marginRight: 20, flexShrink: 0 }}>
-          <span style={{ fontFamily: T.mono, fontSize: 15, fontWeight: 500, letterSpacing: "0.18em", color: T.blue }}>
-            PHASORA
-          </span>
-          <span style={{ fontFamily: T.serif, fontStyle: "italic", fontSize: 11, color: T.text3 }}>
-            Physics Canvas
-          </span>
-        </div>
+      {showTopNav && (
+        <TopNav
+          activeMode={activeMode}
+          onGoHome={goHome}
+          showSim={showSim}
+          showFormulas={showFormulas}
+          canvasView={canvasView}
+          onToggleSim={toggleSim}
+          onToggleFormulas={toggleFormulas}
+          onToggleProblems={toggleCanvasProblems}
+          showAI={showAI}
+          onToggleAI={() => setShowAI((v) => !v)}
+        />
+      )}
 
-        {/* Center toolbar */}
-        <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
-          {[
-            { label: "Simulation", icon: "⬡", active: showSim && mainView === "learn",     onClick: toggleSim },
-            { label: "Formulas",   icon: "∑", active: showFormulas && mainView === "learn", onClick: toggleFormulas },
-          ].map(btn => (
-            <button key={btn.label} onClick={btn.onClick} style={{
-              display: "flex", alignItems: "center", gap: 6,
-              padding: "5px 14px", borderRadius: 20,
-              border: `1px solid ${btn.active ? T.blue : T.border}`,
-              background: btn.active ? T.blueGlow : "transparent",
-              color: btn.active ? T.blue : T.text2,
-              fontSize: 12, fontWeight: 500,
-              transition: "all 0.15s ease",
+      {activeMode === "home" && (
+        <HomePage onSelectMode={openMode} />
+      )}
+
+      {activeMode === "canvas" && (
+        <div style={{ flex: 1, display: "flex", overflow: "hidden" }}>
+          <CurriculumSidebar
+            activeConcept={activeConcept}
+            expandedGroup={expandedGroup}
+            setExpandedGroup={setExpandedGroup}
+            onSelectConcept={selectConcept}
+            collapsed={!sidebarOpen}
+            onToggleCollapse={() => setSidebarOpen((s) => !s)}
+            width={244}
+          />
+
+          {showFormulas && (
+            <div style={{
+              position: "fixed",
+              top: 56,
+              left: 0,
+              bottom: 0,
+              width: 332,
+              background: T.bg1,
+              borderRight: `1px solid ${T.border}`,
+              zIndex: 50,
+              display: "flex",
+              flexDirection: "column",
+              overflow: "hidden",
+              boxShadow: "4px 0 24px rgba(15,23,42,0.10)",
+              animation: formulaLeaving
+                ? "slideOutToLeft 0.27s cubic-bezier(0.4,0,0.2,1) forwards"
+                : "slideInFromLeft 0.27s cubic-bezier(0.4,0,0.2,1) forwards",
             }}>
-              <span>{btn.icon}</span> {btn.label}
-            </button>
-          ))}
-
-          <div style={{ width: 1, height: 18, background: T.border, margin: "0 2px" }} />
-
-          <button
-            onClick={() => setMainView(v => v === "problems" ? "learn" : "problems")}
-            style={{
-              display: "flex", alignItems: "center", gap: 6,
-              padding: "5px 14px", borderRadius: 20,
-              border: `1px solid ${mainView === "problems" ? T.blue : T.border}`,
-              background: mainView === "problems" ? T.blueGlow : "transparent",
-              color: mainView === "problems" ? T.blue : T.text2,
-              fontSize: 12, fontWeight: 500,
-              transition: "all 0.15s ease",
-            }}
-          >
-            ◈ Problems
-          </button>
-        </div>
-
-        <div style={{ flex: 1 }} />
-
-        {/* AI button */}
-        <button onClick={() => setShowAI(o => !o)} style={{
-          display: "flex", alignItems: "center", gap: 7,
-          padding: "6px 16px", borderRadius: 20,
-          border: `1px solid ${showAI ? T.blue : T.border2}`,
-          background: showAI ? T.blue : T.bg2,
-          color: showAI ? "#fff" : T.text1,
-          fontSize: 12, fontWeight: 500,
-          transition: "all 0.15s ease",
-          boxShadow: showAI ? "0 2px 10px rgba(29,78,216,0.22)" : "none",
-        }}>
-          ✦ Ask Phasora
-        </button>
-      </nav>
-
-      {/* ── MAIN LAYOUT ── */}
-      <div style={{ flex: 1, display: "flex", overflow: "hidden" }}>
-
-        {/* LEFT SIDEBAR */}
-        <aside style={{
-          width: sidebarOpen ? 224 : 44, flexShrink: 0,
-          background: T.bg1, borderRight: `1px solid ${T.border}`,
-          display: "flex", flexDirection: "column", overflow: "hidden",
-          transition: "width 0.28s cubic-bezier(0.4,0,0.2,1)",
-        }}>
-          <div style={{ padding: sidebarOpen ? "14px 16px 10px" : "14px 8px 10px", borderBottom: `1px solid ${T.border}`, display: "flex", justifyContent: "space-between", alignItems: "center", flexShrink: 0 }}>
-            {sidebarOpen && (
-              <div>
-                <div style={{ fontSize: 10, fontWeight: 600, color: T.text3, letterSpacing: "0.07em", textTransform: "uppercase" }}>
-                  Classical Mechanics
+              <div style={{
+                padding: "14px 16px 10px",
+                borderBottom: `1px solid ${T.border}`,
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                flexShrink: 0,
+              }}>
+                <div>
+                  <div style={{ fontSize: 10, fontWeight: 600, color: T.text3, letterSpacing: "0.07em", textTransform: "uppercase" }}>
+                    Formula Sheet
+                  </div>
+                  <div style={{ fontSize: 14, color: T.text0, fontWeight: 500, marginTop: 3 }}>
+                    {CONCEPT_TEXT[activeConcept]?.title || "All Formulas"}
+                  </div>
                 </div>
-                <div style={{ fontSize: 14, color: T.text0, fontWeight: 500, marginTop: 3 }}>Topics</div>
+                <button
+                  aria-label="Close formula sheet"
+                  onClick={closeFormulas}
+                  onMouseEnter={e => e.currentTarget.style.background = T.bg3}
+                  onMouseLeave={e => e.currentTarget.style.background = "transparent"}
+                  style={{
+                    width: 28,
+                    height: 28,
+                    borderRadius: 6,
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    color: T.text2,
+                    fontSize: 18,
+                    lineHeight: 1,
+                    background: "transparent",
+                    transition: "background 0.15s",
+                  }}
+                >
+                  ×
+                </button>
               </div>
-            )}
-            <button
-              onClick={() => setSidebarOpen(s => !s)}
-              title={sidebarOpen ? "Collapse sidebar" : "Expand sidebar"}
-              style={{
-                width: 28, height: 28, borderRadius: 6,
-                display: "flex", alignItems: "center", justifyContent: "center",
-                color: T.text2, fontSize: 14, lineHeight: 1,
-                background: "transparent", transition: "background 0.15s",
-                flexShrink: 0, margin: sidebarOpen ? 0 : "0 auto",
-              }}
-              onMouseEnter={e => e.currentTarget.style.background = T.bg3}
-              onMouseLeave={e => e.currentTarget.style.background = "transparent"}
-            >{sidebarOpen ? "◂" : "▸"}</button>
-          </div>
 
-          {sidebarOpen && (
-            <div style={{ flex: 1, overflowY: "auto", paddingTop: 4 }}>
-              {CURRICULUM.map(group => (
-                <div key={group.id}>
-                  <button
-                    onClick={() => group.active && setExpandedGroup(g => g === group.id ? null : group.id)}
-                    style={{
-                      width: "100%", textAlign: "left",
-                      padding: "9px 16px",
-                      display: "flex", justifyContent: "space-between", alignItems: "center",
-                      fontSize: 13, fontWeight: 500,
-                      color: group.active ? T.text0 : T.text3,
-                      background: expandedGroup === group.id && group.active ? T.blueLight : "none",
-                      borderLeft: `2px solid ${expandedGroup === group.id && group.active ? T.blue : "transparent"}`,
-                      cursor: group.active ? "pointer" : "default",
-                      transition: "all 0.15s",
-                    }}
-                  >
-                    {group.label}
-                    {group.active
-                      ? <span style={{ fontSize: 12, color: T.text3 }}>{expandedGroup === group.id ? "▾" : "▸"}</span>
-                      : <span style={{ fontSize: 9, color: T.text3, background: T.bg3, padding: "1px 6px", borderRadius: 3 }}>Coming Soon</span>
-                    }
-                  </button>
-
-                  {expandedGroup === group.id && group.concepts.map(c => (
-                    <button key={c.id}
-                      onClick={() => {
-                        setActiveConcept(c.id);
-                        if (mainView !== "learn") setMainView("learn");
-                      }}
-                      style={{
-                        width: "100%", textAlign: "left",
-                        padding: "7px 16px 7px 30px",
-                        fontSize: 13,
-                        color: activeConcept === c.id ? T.blue : T.text1,
-                        background: activeConcept === c.id ? T.blueGlow : "none",
-                        borderLeft: `2px solid ${activeConcept === c.id ? T.blue : "transparent"}`,
-                        cursor: "pointer",
-                        display: "flex", justifyContent: "space-between", alignItems: "center",
-                        transition: "all 0.12s",
-                      }}
-                    >
-                      {c.label}
-                      {c.hasViz && (
-                        <span style={{
-                          fontSize: 9, color: T.teal, background: T.tealLight,
-                          padding: "1px 6px", borderRadius: 3, fontWeight: 500,
-                        }}>viz</span>
-                      )}
-                    </button>
-                  ))}
-                </div>
-              ))}
+              <div style={{ flex: 1, overflowY: "auto", padding: "12px 12px" }}>
+                {visibleFormulas.length > 0
+                  ? visibleFormulas.map((f, i) => <FormulaCard key={f.id} formula={f} defaultOpen={i === 0} />)
+                  : (
+                    <div style={{ fontSize: 13, color: T.text3, padding: "20px 4px", textAlign: "center" }}>
+                      No formulas for this topic yet.
+                    </div>
+                  )
+                }
+              </div>
             </div>
           )}
-        </aside>
 
-        {/* FORMULA OVERLAY — slides in from left over the sidebar */}
-        {showFormulas && (
-          <div style={{
-            position: "fixed",
-            top: 52,
-            left: 0,
-            bottom: 0,
-            width: 320,
-            background: T.bg1,
-            borderRight: `1px solid ${T.border}`,
-            zIndex: 50,
-            display: "flex",
-            flexDirection: "column",
-            overflow: "hidden",
-            boxShadow: "4px 0 24px rgba(15,23,42,0.10)",
-            animation: formulaLeaving
-              ? "slideOutToLeft 0.27s cubic-bezier(0.4,0,0.2,1) forwards"
-              : "slideInFromLeft 0.27s cubic-bezier(0.4,0,0.2,1) forwards",
-          }}>
-            {/* Header */}
-            <div style={{
-              padding: "14px 16px 10px",
-              borderBottom: `1px solid ${T.border}`,
-              display: "flex", justifyContent: "space-between", alignItems: "center",
-              flexShrink: 0,
-            }}>
-              <div>
-                <div style={{ fontSize: 10, fontWeight: 600, color: T.text3, letterSpacing: "0.07em", textTransform: "uppercase" }}>
-                  Formula Sheet
+          {canvasView === "problems" ? (
+            <div className="fadeIn" style={{ flex: 1, overflowY: "auto", padding: "40px 48px" }}>
+              <div style={{ maxWidth: 760, margin: "0 auto" }}>
+                <div style={{ fontSize: 10, fontWeight: 600, color: T.blue, letterSpacing: "0.1em", textTransform: "uppercase", marginBottom: 10 }}>
+                  Practice
                 </div>
-                <div style={{ fontSize: 14, color: T.text0, fontWeight: 500, marginTop: 3 }}>
-                  {CONCEPT_TEXT[activeConcept]?.title || "All Formulas"}
-                </div>
+                <h1 style={{ fontFamily: T.serif, fontStyle: "italic", fontSize: 30, color: T.navy, marginBottom: 10, fontWeight: 400 }}>
+                  Practice Problems
+                </h1>
+                <p style={{ fontSize: 14, color: T.text2, marginBottom: 28, lineHeight: 1.75, maxWidth: 620 }}>
+                  AI-generated physics problems with step-by-step solutions. Select a topic and difficulty, then generate.
+                </p>
+                <ProblemsTab apiKey={API_KEY} />
               </div>
-              <button
-                onClick={closeFormulas}
-                onMouseEnter={e => e.currentTarget.style.background = T.bg3}
-                onMouseLeave={e => e.currentTarget.style.background = "transparent"}
-                style={{
-                  width: 28, height: 28, borderRadius: 6,
-                  display: "flex", alignItems: "center", justifyContent: "center",
-                  color: T.text2, fontSize: 18, lineHeight: 1,
-                  background: "transparent", transition: "background 0.15s",
-                }}
-              >×</button>
             </div>
+          ) : (
+            <div style={{ flex: 1, display: "flex", overflow: "hidden" }}>
+              <div style={{
+                flexShrink: 0,
+                width: panelOpen ? "44%" : "100%",
+                transition: "width 0.35s cubic-bezier(0.4,0,0.2,1)",
+                overflowY: "auto",
+                overflowX: "hidden",
+                borderRight: panelOpen ? `1px solid ${T.border}` : "none",
+              }}>
+                <ConceptView conceptId={activeConcept} compact={panelOpen} />
+              </div>
 
-            {/* Formula cards */}
-            <div style={{ flex: 1, overflowY: "auto", padding: "12px 12px" }}>
-              {visibleFormulas.length > 0
-                ? visibleFormulas.map((f, i) => <FormulaCard key={f.id} formula={f} defaultOpen={i === 0} />)
-                : (
-                  <div style={{ fontSize: 13, color: T.text3, padding: "20px 4px", textAlign: "center" }}>
-                    No formulas for this topic yet.
+              <div style={{ flex: 1, minWidth: 0, overflowY: "auto", overflowX: "hidden" }}>
+                {panelOpen && (
+                  <div style={{ animation: "slideInRight 0.3s ease", padding: "30px 24px", minWidth: 480 }}>
+                    <div style={{
+                      fontSize: 10,
+                      fontWeight: 600,
+                      color: T.text3,
+                      letterSpacing: "0.1em",
+                      textTransform: "uppercase",
+                      marginBottom: 16,
+                    }}>
+                      Simulation
+                    </div>
+                    {vizMode === "sho" ? <SHOSim /> : <ProjectileSim />}
                   </div>
-                )
-              }
-            </div>
-          </div>
-        )}
-
-        {/* CENTER — learn or problems */}
-        {mainView === "problems" ? (
-          <div className="fadeIn" style={{ flex: 1, overflowY: "auto", padding: "40px 48px" }}>
-            <div style={{ maxWidth: 720, margin: "0 auto" }}>
-              <div style={{ fontSize: 10, fontWeight: 600, color: T.blue, letterSpacing: "0.1em", textTransform: "uppercase", marginBottom: 10 }}>
-                Practice
+                )}
               </div>
-              <h1 style={{ fontFamily: T.serif, fontStyle: "italic", fontSize: 28, color: T.navy, marginBottom: 8, fontWeight: 400 }}>
-                Practice Problems
+            </div>
+          )}
+        </div>
+      )}
+      {activeMode === "library" && (
+        <div style={{ flex: 1, display: "flex", overflow: "hidden" }}>
+          <CurriculumSidebar
+            activeConcept={activeConcept}
+            expandedGroup={expandedGroup}
+            setExpandedGroup={setExpandedGroup}
+            onSelectConcept={selectConcept}
+            collapsed={false}
+            width={300}
+          />
+          <div style={{ flex: 1, overflowY: "auto", overflowX: "hidden" }}>
+            <ConceptView conceptId={activeConcept} library />
+          </div>
+        </div>
+      )}
+
+      {activeMode === "problems" && (
+        <div style={{ flex: 1, overflowY: "auto", padding: "24px 24px 42px" }}>
+          <div style={{ maxWidth: 1040, margin: "0 auto" }}>
+            <BackHomeButton onClick={goHome} />
+            <div style={{ maxWidth: 800, margin: "18px auto 0" }}>
+              <div style={{ fontSize: 10, fontWeight: 600, color: T.blue, letterSpacing: "0.1em", textTransform: "uppercase", marginBottom: 10 }}>
+                Problem Mode
+              </div>
+              <h1 style={{ fontFamily: T.serif, fontStyle: "italic", fontSize: 32, color: T.navy, marginBottom: 10, fontWeight: 400 }}>
+                Focused Problem Practice
               </h1>
-              <p style={{ fontSize: 14, color: T.text2, marginBottom: 28, lineHeight: 1.7, maxWidth: 520 }}>
-                AI-generated physics problems with step-by-step solutions. Select a topic and difficulty, then generate.
+              <p style={{ fontSize: 14, color: T.text2, marginBottom: 24, lineHeight: 1.75 }}>
+                Choose a topic and difficulty, then generate a fresh problem with a worked solution.
               </p>
-              <ProblemsTab apiKey={API_KEY} />
+              <div style={{
+                background: T.bg1,
+                border: `1px solid ${T.border}`,
+                borderRadius: 12,
+                padding: "22px 22px 24px",
+                boxShadow: "0 6px 18px rgba(15,23,42,0.06)",
+              }}>
+                <ProblemsTab apiKey={API_KEY} />
+              </div>
             </div>
           </div>
-        ) : (
-          <div style={{ flex: 1, display: "flex", overflow: "hidden" }}>
+        </div>
+      )}
 
-            {/* Concept text — width shrinks when simulation panel opens */}
+      {activeMode === "tutor" && (
+        <div style={{ flex: 1, overflow: "hidden", padding: "24px 24px 34px" }}>
+          <div style={{ maxWidth: 1000, height: "100%", margin: "0 auto", display: "flex", flexDirection: "column" }}>
+            <BackHomeButton onClick={goHome} />
             <div style={{
-              flexShrink: 0,
-              width: panelOpen ? "40%" : "100%",
-              transition: "width 0.35s cubic-bezier(0.4,0,0.2,1)",
-              overflowY: "auto", overflowX: "hidden",
-              borderRight: panelOpen ? `1px solid ${T.border}` : "none",
+              margin: "16px auto 0",
+              width: "100%",
+              maxWidth: 700,
+              minHeight: 0,
+              flex: 1,
+              display: "flex",
+              flexDirection: "column",
+              background: T.bg1,
+              border: `1px solid ${T.border}`,
+              borderRadius: 12,
+              boxShadow: "0 6px 18px rgba(15,23,42,0.06)",
+              padding: "18px 18px 16px",
             }}>
-              <ConceptView conceptId={activeConcept} compact={panelOpen} />
+              <div style={{
+                fontFamily: T.brandMono,
+                fontSize: 10,
+                color: T.blue,
+                textTransform: "uppercase",
+                letterSpacing: "0.08em",
+                marginBottom: 6,
+              }}>
+                AI Tutor
+              </div>
+              <div style={{ fontSize: 14, color: T.text2, marginBottom: 14 }}>
+                Ask concept questions, request intuition, or get step-by-step help.
+              </div>
+              <div style={{ flex: 1, minHeight: 0 }}>
+                <TutorPanel apiKey={API_KEY} starterPrompts={TUTOR_STARTERS} minHeight={540} />
+              </div>
             </div>
-
-            {/* Right panel — simulation only */}
-            <div style={{ flex: 1, minWidth: 0, overflowY: "auto", overflowX: "hidden" }}>
-              {panelOpen && (
-                <div style={{ animation: "slideInRight 0.3s ease", padding: "28px 24px", minWidth: 480 }}>
-                  <div style={{
-                    fontSize: 10, fontWeight: 600, color: T.text3,
-                    letterSpacing: "0.1em", textTransform: "uppercase", marginBottom: 16,
-                  }}>Simulation</div>
-                  {vizMode === "sho" ? <SHOSim /> : <ProjectileSim />}
-                </div>
-              )}
-            </div>
-
           </div>
-        )}
-      </div>
+        </div>
+      )}
 
-      {/* AI DRAWER */}
-      {showAI && (
+      {activeMode === "canvas" && showAI && (
         <AIDrawer apiKey={API_KEY} onClose={() => setShowAI(false)} />
       )}
 
-      {/* ONBOARDING OVERLAY */}
-      {showOnboarding && (
+      {activeMode === "canvas" && showOnboarding && (
         <>
           <div style={{
             position: "fixed", inset: 0,
@@ -1577,10 +2124,10 @@ export default function App() {
             zIndex: 201, padding: "36px 32px 28px",
             animation: "fadeIn 0.3s ease",
           }}>
-            <div style={{ fontFamily: T.mono, fontSize: 16, fontWeight: 500, letterSpacing: "0.18em", color: T.blue, marginBottom: 4 }}>
+            <div style={{ fontFamily: T.brandMono, fontSize: 16, fontWeight: 500, letterSpacing: "0.18em", color: T.blue, marginBottom: 4 }}>
               PHASORA
             </div>
-            <div style={{ fontFamily: T.serif, fontStyle: "italic", fontSize: 13, color: T.text3, marginBottom: 20 }}>
+            <div style={{ fontFamily: T.brandSerif, fontStyle: "italic", fontSize: 13, color: T.text3, marginBottom: 20 }}>
               Your interactive physics canvas
             </div>
             <div style={{ fontSize: 14, color: T.text1, lineHeight: 1.75, marginBottom: 22 }}>
@@ -1588,16 +2135,16 @@ export default function App() {
             </div>
             {[
               ["1", "Pick a topic", "Use the sidebar on the left to browse Classical Mechanics concepts."],
-              ["2", "Explore visually", "Click Simulation or Formulas in the toolbar to open interactive panels."],
-              ["3", "Practice", "Hit Problems to generate AI-powered practice questions with solutions."],
-              ["4", "Ask the tutor", "Click Ask Phasora anytime for physics explanations grounded in intuition."],
+              ["2", "Explore visually", "Use Visualize and Formulas tabs to open dynamic panels."],
+              ["3", "Practice", "Use Problems in the tab bar or Problem Mode on Home."],
+              ["4", "Ask the tutor", "Open Ask Phasora for quick intuition and derivations."],
             ].map(([n, title, desc]) => (
               <div key={n} style={{ display: "flex", gap: 12, marginBottom: 14 }}>
                 <div style={{
                   width: 26, height: 26, borderRadius: "50%", flexShrink: 0,
                   background: T.blueGlow, border: `1px solid ${T.border2}`,
                   display: "flex", alignItems: "center", justifyContent: "center",
-                  fontFamily: T.mono, fontSize: 12, fontWeight: 600, color: T.blue,
+                  fontFamily: T.brandMono, fontSize: 12, fontWeight: 600, color: T.blue,
                 }}>{n}</div>
                 <div>
                   <div style={{ fontSize: 13, fontWeight: 600, color: T.navy }}>{title}</div>
@@ -1614,6 +2161,7 @@ export default function App() {
                 fontSize: 13, fontWeight: 600,
                 cursor: "pointer",
                 boxShadow: "0 2px 10px rgba(29,78,216,0.22)",
+                transition: "all 0.15s ease",
               }}
             >Get Started</button>
           </div>

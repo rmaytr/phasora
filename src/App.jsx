@@ -281,17 +281,24 @@ const VIZ_CONCEPT_IDS = new Set(
 
 // ─── SHARED SLIDER ───────────────────────────────────────────────────────────
 const SimSlider = ({ label, value, min, max, step, unit, decimals = 2, onChange }) => (
-  <div style={{ marginBottom: 10 }}>
-    <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 3 }}>
-      <span className="label">{label}</span>
-      <span style={{ fontFamily: T.mono, fontSize: 11, color: T.blue }}>
+  <div style={{
+    flex: "1 1 220px",
+    minWidth: 210,
+    background: T.bg1,
+    border: `1px solid ${T.border}`,
+    borderRadius: 8,
+    padding: "8px 10px",
+  }}>
+    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+      <span className="label" style={{ whiteSpace: "nowrap" }}>{label}</span>
+      <input type="range" min={min} max={max} step={step} value={value}
+        onChange={onChange}
+        style={{ flex: 1, accentColor: T.blue, cursor: "pointer" }}
+      />
+      <span style={{ fontFamily: T.mono, fontSize: 11, color: T.blue, whiteSpace: "nowrap" }}>
         {value.toFixed(decimals)} {unit}
       </span>
     </div>
-    <input type="range" min={min} max={max} step={step} value={value}
-      onChange={onChange}
-      style={{ width: "100%", accentColor: T.blue, cursor: "pointer" }}
-    />
   </div>
 );
 
@@ -463,51 +470,59 @@ const SHOSim = () => {
   }, []);
 
   return (
-    <div style={{ display: "flex", gap: 18, alignItems: "flex-start" }}>
-      <div style={{ flex: 1 }}>
-        <canvas ref={canvasRef} width={340} height={390}
-          style={{ width: "100%", height: 390, borderRadius: 6, border: `1px solid ${T.border}` }} />
+    <div style={{ display: "flex", flexDirection: "column", height: "100%", minHeight: 0, gap: 10 }}>
+      <div style={{ flex: 1, minHeight: 320 }}>
+        <canvas ref={canvasRef} width={920} height={380}
+          style={{ width: "100%", height: "100%", minHeight: 380, borderRadius: 8, border: `1px solid ${T.border}` }} />
       </div>
-      <div style={{ width: 205 }}>
-        <div className="label" style={{ marginBottom: 8 }}>Parameters</div>
+      <div style={{ display: "flex", gap: 8 }}>
+        <button onClick={toggle} style={{
+          padding: "7px 14px", borderRadius: 999,
+          border: `1px solid ${T.border2}`, background: T.bg1,
+          color: T.text1, fontSize: 11, fontWeight: 500,
+          transition: "all 0.15s ease",
+        }}>Pause</button>
+        <button onClick={reset} style={{
+          padding: "7px 14px", borderRadius: 999,
+          border: `1px solid ${T.border2}`, background: T.bg1,
+          color: T.text1, fontSize: 11, fontWeight: 500,
+          transition: "all 0.15s ease",
+        }}>Reset</button>
+      </div>
+
+      <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
         <SimSlider label="Mass"      value={params.mass}      min={0.2} max={4}   step={0.1}  unit="kg"  onChange={e => onSlider("mass", parseFloat(e.target.value))} />
         <SimSlider label="Spring k"  value={params.k}         min={1}   max={30}  step={0.5}  unit="N/m" onChange={e => onSlider("k", parseFloat(e.target.value))} />
         <SimSlider label="Damping"   value={params.damping}   min={0}   max={0.8} step={0.02} unit=""     onChange={e => onSlider("damping", parseFloat(e.target.value))} />
         <SimSlider label="Amplitude" value={params.amplitude} min={10}  max={120} step={5}    unit="px"  decimals={0} onChange={e => onSlider("amplitude", parseFloat(e.target.value))} />
+      </div>
 
-        <div style={{ display: "flex", gap: 6, marginTop: 6 }}>
-          <button onClick={toggle} style={{
-            flex: 1, padding: "5px 0", borderRadius: 4,
-            border: `1px solid ${T.border2}`, background: T.bg1,
-            color: T.text1, fontSize: 11, fontWeight: 500,
-          }}>Pause</button>
-          <button onClick={reset} style={{
-            flex: 1, padding: "5px 0", borderRadius: 4,
-            border: `1px solid ${T.border2}`, background: T.bg1,
-            color: T.text1, fontSize: 11, fontWeight: 500,
-          }}>Reset</button>
-        </div>
-
-        <div style={{ marginTop: 10, padding: 10, background: T.bg1, borderRadius: 6, border: `1px solid ${T.border}` }}>
-          <div className="label" style={{ marginBottom: 6 }}>Live Readout</div>
-          {[["x(t)", readouts.x, "m"], ["v(t)", readouts.v, "m/s"], ["KE", readouts.ke, "J"], ["PE", readouts.pe, "J"]].map(([l, v, u]) => (
-            <div key={l} style={{ display: "flex", justifyContent: "space-between", marginBottom: 4 }}>
-              <span style={{ fontFamily: T.mono, fontSize: 10, color: T.text2 }}>{l}</span>
-              <span style={{ fontFamily: T.mono, fontSize: 10, color: T.blue }}>
-                {v} <span style={{ color: T.text3 }}>{u}</span>
-              </span>
-            </div>
-          ))}
-        </div>
-
-        <div style={{ marginTop: 8, padding: "10px 12px", background: T.blueLight, borderRadius: 6, border: `1px solid ${T.border2}` }}>
-          <div className="label" style={{ marginBottom: 5, color: T.blue }}>Key Insight</div>
-          <div style={{ fontSize: 11, color: T.text1, lineHeight: 1.55 }}>
-            Period = {period} s regardless of amplitude. Change mass or k and it shifts. Amplitude is irrelevant.
+      <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+        {[["x(t)", readouts.x, "m"], ["v(t)", readouts.v, "m/s"], ["KE", readouts.ke, "J"], ["PE", readouts.pe, "J"], ["T", period, "s"]].map(([l, v, u]) => (
+          <div key={l} style={{
+            padding: "6px 10px",
+            background: T.bg1,
+            borderRadius: 999,
+            border: `1px solid ${T.border}`,
+            display: "flex",
+            alignItems: "center",
+            gap: 7,
+          }}>
+            <span style={{ fontFamily: T.mono, fontSize: 10, color: T.text2 }}>{l}</span>
+            <span style={{ fontFamily: T.mono, fontSize: 10, color: T.blue }}>
+              {v} <span style={{ color: T.text3 }}>{u}</span>
+            </span>
           </div>
-          <div style={{ marginTop: 6 }}>
-            <Katex tex={`T = 2\\pi\\sqrt{\\frac{m}{k}}`} style={{ fontSize: 13, color: T.blue }} />
-          </div>
+        ))}
+      </div>
+
+      <div style={{ padding: "10px 12px", background: T.blueLight, borderRadius: 8, border: `1px solid ${T.border2}` }}>
+        <div className="label" style={{ marginBottom: 5, color: T.blue }}>Key Insight</div>
+        <div style={{ fontSize: 11, color: T.text1, lineHeight: 1.55 }}>
+          Period = {period} s regardless of amplitude. Change mass or k and it shifts. Amplitude is irrelevant.
+        </div>
+        <div style={{ marginTop: 6 }}>
+          <Katex tex={`T = 2\\pi\\sqrt{\\frac{m}{k}}`} style={{ fontSize: 13, color: T.blue }} />
         </div>
       </div>
     </div>
@@ -682,44 +697,51 @@ const ProjectileSim = () => {
   }, []);
 
   return (
-    <div style={{ display: "flex", gap: 18, alignItems: "flex-start" }}>
-      <div style={{ flex: 1 }}>
-        <canvas ref={canvasRef} width={390} height={320}
-          style={{ width: "100%", height: 320, borderRadius: 6, border: `1px solid ${T.border}` }} />
+    <div style={{ display: "flex", flexDirection: "column", height: "100%", minHeight: 0, gap: 10 }}>
+      <div style={{ flex: 1, minHeight: 320 }}>
+        <canvas ref={canvasRef} width={920} height={380}
+          style={{ width: "100%", height: "100%", minHeight: 380, borderRadius: 8, border: `1px solid ${T.border}` }} />
       </div>
-      <div style={{ width: 205 }}>
-        <div className="label" style={{ marginBottom: 8 }}>Parameters</div>
+      <button onClick={() => setRunning(true)} style={{
+        width: "100%", padding: "9px 0", borderRadius: 999,
+        border: `1px solid ${T.blue}`, background: T.blue,
+        color: "#fff", fontSize: 12, fontWeight: 600, letterSpacing: "0.03em",
+        transition: "all 0.15s ease",
+      }}>Launch</button>
+
+      <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
         <SimSlider label="Launch Angle" value={params.angle} min={5}   max={85}   step={1}   unit="°"    decimals={0} onChange={e => onProjSlider("angle", parseFloat(e.target.value))} />
         <SimSlider label="Init. Speed"  value={params.v0}    min={5}   max={50}   step={1}   unit="m/s"  decimals={0} onChange={e => onProjSlider("v0", parseFloat(e.target.value))} />
         <SimSlider label="Gravity"      value={params.g}     min={1.6} max={24.8} step={0.1} unit="m/s²"              onChange={e => onProjSlider("g", parseFloat(e.target.value))} />
+      </div>
 
-        <button onClick={() => setRunning(true)} style={{
-          width: "100%", padding: "7px 0", marginTop: 6, borderRadius: 4,
-          border: `1px solid ${T.blue}`, background: T.blueGlow,
-          color: T.blue, fontSize: 11, fontWeight: 500,
-        }}>▶ Launch</button>
-
-        <div style={{ marginTop: 10, padding: 10, background: T.bg1, borderRadius: 6, border: `1px solid ${T.border}` }}>
-          <div className="label" style={{ marginBottom: 6 }}>Computed</div>
-          {[["Range", metrics.range, "m"], ["Max Height", metrics.maxH, "m"],
-            ["Flight Time", metrics.tFlight, "s"], ["vₓ", vx.toFixed(2), "m/s"], ["v_y₀", vy0.toFixed(2), "m/s"]
-          ].map(([l, v, u]) => (
-            <div key={l} style={{ display: "flex", justifyContent: "space-between", marginBottom: 3 }}>
-              <span style={{ fontFamily: T.mono, fontSize: 10, color: T.text2 }}>{l}</span>
-              <span style={{ fontFamily: T.mono, fontSize: 10, color: T.blue }}>
-                {v} <span style={{ color: T.text3 }}>{u}</span>
-              </span>
-            </div>
-          ))}
-        </div>
-
-        <div style={{ marginTop: 8, padding: "10px 12px", background: T.blueLight, borderRadius: 6, border: `1px solid ${T.border2}` }}>
-          <div className="label" style={{ marginBottom: 5, color: T.blue }}>Key Insight</div>
-          <div style={{ fontSize: 11, color: T.text1, lineHeight: 1.55, marginBottom: 6 }}>
-            x and y are independent. Try Moon gravity (1.62 m/s²) — same formula, different physics.
+      <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+        {[["Range", metrics.range, "m"], ["Max Height", metrics.maxH, "m"],
+          ["Flight Time", metrics.tFlight, "s"], ["vₓ", vx.toFixed(2), "m/s"], ["v_y₀", vy0.toFixed(2), "m/s"]
+        ].map(([l, v, u]) => (
+          <div key={l} style={{
+            padding: "6px 10px",
+            background: T.bg1,
+            borderRadius: 999,
+            border: `1px solid ${T.border}`,
+            display: "flex",
+            alignItems: "center",
+            gap: 7,
+          }}>
+            <span style={{ fontFamily: T.mono, fontSize: 10, color: T.text2 }}>{l}</span>
+            <span style={{ fontFamily: T.mono, fontSize: 10, color: T.blue }}>
+              {v} <span style={{ color: T.text3 }}>{u}</span>
+            </span>
           </div>
-          <Katex tex={`R = \\frac{v_0^2 \\sin 2\\theta}{g}`} style={{ fontSize: 13 }} />
+        ))}
+      </div>
+
+      <div style={{ padding: "10px 12px", background: T.blueLight, borderRadius: 8, border: `1px solid ${T.border2}` }}>
+        <div className="label" style={{ marginBottom: 5, color: T.blue }}>Key Insight</div>
+        <div style={{ fontSize: 11, color: T.text1, lineHeight: 1.55, marginBottom: 6 }}>
+          x and y are independent. Try Moon gravity (1.62 m/s²) — same formula, different physics.
         </div>
+        <Katex tex={`R = \\frac{v_0^2 \\sin 2\\theta}{g}`} style={{ fontSize: 13 }} />
       </div>
     </div>
   );
@@ -1177,15 +1199,16 @@ const ConceptView = ({ conceptId, compact = false, library = false }) => {
   );
 
   const outerPadding = library
-    ? "56px 64px 64px"
+    ? "52px 64px 52px"
     : compact
-      ? "34px 32px 36px"
-      : "56px 84px 64px";
+      ? "30px 30px 34px"
+      : "40px 52px 44px";
 
   return (
     <div key={conceptId} className="fadeIn" style={{
       padding: outerPadding,
       transition: "padding 0.35s ease",
+      minHeight: "100%",
     }}>
       <div style={{
         fontSize: 10, fontWeight: 600, color: T.blue,
@@ -1193,18 +1216,19 @@ const ConceptView = ({ conceptId, compact = false, library = false }) => {
       }}>
         Classical Mechanics
       </div>
+      <div style={{ borderTop: `1px solid ${T.border}`, marginBottom: library ? 24 : 18 }} />
 
       <h1 style={{
         fontFamily: T.serif, fontStyle: "italic",
-        fontSize: library ? 34 : compact ? 24 : 30, color: T.navy,
-        lineHeight: 1.24, marginBottom: library ? 20 : 16, fontWeight: 400,
+        fontSize: library ? 34 : 28, color: T.navy,
+        lineHeight: 1.22, marginBottom: library ? 20 : 18, fontWeight: 400,
       }}>
         {c.title}
       </h1>
 
       <p style={{
-        fontSize: library ? 16 : compact ? 14 : 15, color: T.text1,
-        lineHeight: library ? 1.95 : 1.85, marginBottom: library ? 36 : 30,
+        fontSize: 14, color: T.text1,
+        lineHeight: 1.75, marginBottom: library ? 34 : 28,
         maxWidth: library ? 760 : compact ? "100%" : 580,
       }}>
         {c.summary}
@@ -1224,7 +1248,7 @@ const ConceptView = ({ conceptId, compact = false, library = false }) => {
         {c.equations.map((eq, i) => (
           <div key={i} style={{
             display: "flex", alignItems: "center", gap: library ? 22 : 16,
-            padding: library ? "14px 0" : "11px 0",
+            padding: "12px 0",
             borderBottom: i < c.equations.length - 1 ? `1px solid ${T.border}` : "none",
           }}>
             <div style={{ minWidth: 0 }}>
@@ -1467,7 +1491,6 @@ const CurriculumSidebar = ({
                         onClick={() => onSelectConcept(concept.id)}
                         onMouseEnter={() => setHoveredConcept(concept.id)}
                         onMouseLeave={() => setHoveredConcept(null)}
-                        title={concept.hasViz ? "Has visualization" : undefined}
                         style={{
                           width: "100%",
                           textAlign: "left",
@@ -1482,22 +1505,10 @@ const CurriculumSidebar = ({
                               : "transparent",
                           borderLeft: `2px solid ${active ? T.blue : "transparent"}`,
                           cursor: "pointer",
-                          display: "flex",
-                          justifyContent: "space-between",
-                          alignItems: "center",
                           transition: "all 0.15s ease",
                         }}
                       >
                         <span>{concept.label}</span>
-                        {concept.hasViz && (
-                          <span style={{
-                            width: 6,
-                            height: 6,
-                            borderRadius: "50%",
-                            background: T.teal,
-                            flexShrink: 0,
-                          }} />
-                        )}
                       </button>
                     );
                   })}
@@ -1687,11 +1698,8 @@ const TopNav = ({
       {activeMode === "canvas" ? (
         <div style={{
           display: "flex",
-          gap: 8,
+          gap: 6,
           alignItems: "center",
-          background: T.bg2,
-          borderRadius: 999,
-          padding: 4,
         }}>
           {tabs.map((tab) => (
             <button
@@ -1705,8 +1713,8 @@ const TopNav = ({
                 fontFamily: T.brandMono,
                 fontSize: 11,
                 letterSpacing: "0.08em",
-                color: tab.active ? "#fff" : T.text2,
-                background: tab.active ? T.blue : hoverTab === tab.id ? T.bg1 : "transparent",
+                color: tab.active ? "#fff" : hoverTab === tab.id ? T.text1 : T.text2,
+                background: tab.active ? T.blue : hoverTab === tab.id ? "rgba(0,0,0,0.04)" : "transparent",
                 transition: "all 0.15s ease",
               }}
             >
@@ -1739,13 +1747,12 @@ const TopNav = ({
             gap: 6,
             padding: "8px 15px",
             borderRadius: 999,
-            border: `1px solid ${showAI ? T.blue : T.border2}`,
-            background: showAI ? T.blue : hoverTutor ? T.bg3 : T.bg2,
-            color: showAI ? "#fff" : T.text1,
+            border: `1px solid ${hoverTutor || showAI ? T.blue : T.blueDim}`,
+            background: hoverTutor || showAI ? T.blueLight : T.bg1,
+            color: T.blue,
             fontSize: 12,
             fontWeight: 500,
             transition: "all 0.15s ease",
-            boxShadow: showAI ? "0 2px 10px rgba(29,78,216,0.22)" : "none",
           }}
         >
           Ask Phasora
@@ -2019,31 +2026,39 @@ export default function App() {
               </div>
             </div>
           ) : (
-            <div style={{ flex: 1, display: "flex", overflow: "hidden" }}>
+            <div style={{ flex: 1, display: "flex", overflow: "hidden", height: "100%" }}>
               <div style={{
                 flexShrink: 0,
                 width: panelOpen ? "44%" : "100%",
                 transition: "width 0.35s cubic-bezier(0.4,0,0.2,1)",
+                height: "100%",
                 overflowY: "auto",
                 overflowX: "hidden",
                 borderRight: panelOpen ? `1px solid ${T.border}` : "none",
+                background: T.bg1,
+                boxShadow: panelOpen ? "2px 0 8px rgba(0,0,0,0.04)" : "none",
+                zIndex: panelOpen ? 1 : "auto",
               }}>
                 <ConceptView conceptId={activeConcept} compact={panelOpen} />
               </div>
 
-              <div style={{ flex: 1, minWidth: 0, overflowY: "auto", overflowX: "hidden" }}>
+              <div style={{
+                flex: 1,
+                minWidth: 0,
+                overflowY: "auto",
+                overflowX: "hidden",
+                height: "100%",
+                background: T.bg0,
+              }}>
                 {panelOpen && (
-                  <div style={{ animation: "slideInRight 0.3s ease", padding: "30px 24px", minWidth: 480 }}>
-                    <div style={{
-                      fontSize: 10,
-                      fontWeight: 600,
-                      color: T.text3,
-                      letterSpacing: "0.1em",
-                      textTransform: "uppercase",
-                      marginBottom: 16,
-                    }}>
-                      Simulation
-                    </div>
+                  <div style={{
+                    animation: "slideInRight 0.3s ease",
+                    padding: "20px 22px 18px",
+                    minWidth: 0,
+                    height: "100%",
+                    display: "flex",
+                    flexDirection: "column",
+                  }}>
                     {vizMode === "sho" ? <SHOSim /> : <ProjectileSim />}
                   </div>
                 )}

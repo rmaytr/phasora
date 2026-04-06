@@ -119,7 +119,7 @@ const CURRICULUM = [
   {
     id: "kinematics", label: "Kinematics", active: true,
     concepts: [
-      { id: "motion1d",   label: "1D Motion & Displacement" },
+      { id: "motion1d",   label: "Position, Displacement & Distance" },
       { id: "projectile", label: "Projectile Motion",        hasViz: true },
       { id: "velocity",   label: "Velocity & Acceleration"  },
     ]
@@ -141,13 +141,85 @@ const CURRICULUM = [
 // ─── CONCEPT TEXT ─────────────────────────────────────────────────────────────
 const CONCEPT_TEXT = {
   motion1d: {
-    title: "1D Motion & Displacement",
-    summary: "Displacement is a vector quantity — it's not how far you traveled, but where you ended up relative to where you started. An object can travel 100 m and have zero displacement.",
+    title: "Position, Displacement & Distance",
+    summary: "Before anything else in physics, you need to answer one question: where is the object? Position is the answer — it's a number that tells you where something is along an axis at a specific moment in time. But a number alone means nothing without a reference point. That reference point is called the origin, marked as zero on your axis. Everything is measured relative to it. Move right of the origin, your position is positive. Move left, it's negative. Physics doesn't care which direction you call positive — but you must pick one and stay consistent throughout the problem.",
     equations: [
-      { tex: "\\Delta x = x_f - x_i",                    label: "Displacement" },
-      { tex: "\\bar{v} = \\frac{\\Delta x}{\\Delta t}",  label: "Average velocity" },
-      { tex: "v(t) = \\frac{dx}{dt}",                     label: "Instantaneous velocity" },
+      { tex: "x(t)", label: "Position as a function of time" },
     ],
+    sections: [
+      {
+        id: "position",
+        title: "1. Position",
+        theory: "Before anything else in physics, you need to answer one question: where is the object? Position is the answer — it's a number that tells you where something is along an axis at a specific moment in time. But a number alone means nothing without a reference point. That reference point is called the origin, marked as zero on your axis. Everything is measured relative to it. Move right of the origin, your position is positive. Move left, it's negative. Physics doesn't care which direction you call positive — but you must pick one and stay consistent throughout the problem.",
+        realWorld: "Think of it like a number line drawn on a highway. You pick a landmark — say, mile marker 0 at the city center. Your position is simply how far you are from that marker, and in which direction. If you're 3 km east, x = +3 km. If you drove 2 km west, x = −2 km. The sign is the direction.",
+        equations: [
+          { tex: "x(t)", label: "position as a function of time" },
+        ],
+        note: "x is used for horizontal motion, y for vertical. Both are positions — just along different axes.",
+      },
+      {
+        id: "displacement",
+        title: "2. Displacement",
+        theory: "Displacement is the change in position — where you ended up minus where you started. It is a vector, meaning it carries both a magnitude (how far) and a direction (which way). The Greek letter delta (Δ) always means 'change in' — so Δx means 'change in x.' Crucially, displacement does not care about the path you took to get there. Only the start and end points matter.",
+        realWorld: "You walk 3 blocks east, then 3 blocks back west. You're exactly where you started. Your distance traveled is 6 blocks. Your displacement is zero. This is why your GPS distance and your displacement are often completely different numbers — one tracks the path, the other tracks the result.",
+        equations: [
+          { tex: "\\Delta x = x_f - x_i", label: "displacement = final position minus initial" },
+          { tex: "\\Delta x > 0", label: "means motion in the positive direction" },
+          { tex: "\\Delta x < 0", label: "means motion in the negative direction" },
+          { tex: "|\\Delta x|", label: "magnitude of displacement (always positive)" },
+        ],
+        insight: "Displacement can be zero even after significant motion. A marathon runner who completes a loop course has zero displacement. An object that returns to its starting point always has Δx = 0, no matter how far it traveled.",
+      },
+      {
+        id: "distance-vs-displacement",
+        title: "3. Distance vs. Displacement",
+        theory: "Distance is a scalar — it has magnitude only, no direction, and no sign. It is the total length of the path traveled, regardless of direction changes along the way. Distance is always positive or zero. Displacement is a vector — it has both magnitude and direction, and can be negative. These two quantities are equal only when the object moves in a straight line without reversing direction.",
+        realWorld: "A dog runs around a circular park once and returns to the starting point. Distance traveled = circumference of the park. Displacement = 0. This is not a trick — this is the precise physical difference between 'how much ground you covered' and 'how far from home you ended up.'",
+        table: {
+          headers: ["", "Displacement", "Distance"],
+          rows: [
+            ["Type", "Vector", "Scalar"],
+            ["Sign", "Can be + or −", "Always ≥ 0"],
+            ["Depends on path?", "No", "Yes"],
+            ["Symbol", "Δx", "d"],
+            ["When equal", "Straight-line, no reversal", "Same condition"],
+          ],
+        },
+        consequence: "In 1998, NASA lost the $125 million Mars Climate Orbiter because one engineering team used metric units and another used imperial units for the same position data. The spacecraft missed its orbital insertion by 170 km and burned up. Unit consistency and sign conventions in position calculations are not academic exercises — they are life and death in applied physics.",
+      },
+      {
+        id: "reference-frames",
+        title: "4. Reference Frames",
+        theory: "Position is always measured relative to a reference frame — a chosen coordinate system with an origin and defined positive directions. There is no 'absolute' position in physics. The same object can have a position of +5 m in one frame and −5 m in another frame, and both are equally valid. What matters is that all measurements in a problem use the same frame consistently. For most Physics I problems, Earth's surface is the reference frame.",
+        realWorld: "When you're on a train and you walk toward the front, you're moving at +2 m/s relative to the train. But the train is moving at +30 m/s relative to the ground. Your position and motion depend entirely on what you measure from. This is why physics always asks: relative to what? Choose your reference frame before solving any problem.",
+      },
+      {
+        id: "position-time-graphs",
+        title: "5. Reading Position-Time Graphs",
+        theory: "A position-time graph (x vs. t) is one of the most powerful tools in kinematics. The value of x at any time t tells you where the object is. The slope of the line between two points gives the average velocity. A steeper slope means faster motion. A horizontal line means the object is stationary. A negative slope means motion in the negative direction. When the graph crosses x = 0, the object is at the origin.",
+        keyBehaviors: [
+          "Horizontal line → object at rest",
+          "Positive slope → moving in positive direction",
+          "Negative slope → moving in negative direction",
+          "Steeper slope → faster speed",
+          "Curved line → changing velocity (acceleration)",
+          "Returns to same x value → displacement = 0 for that interval",
+        ],
+        equations: [
+          { tex: "\\bar{v} = \\frac{\\Delta x}{\\Delta t} = \\frac{x_2 - x_1}{t_2 - t_1}", label: "slope of the x-t graph between two points = average velocity" },
+        ],
+      },
+    ],
+    summaryBox: {
+      title: "What to Remember",
+      bullets: [
+        "Position (x): where you are, measured from an origin. Needs a reference frame. Can be positive or negative.",
+        "Displacement (Δx = x_f − x_i): how far and in what direction you moved from start to finish. A vector. Path-independent.",
+        "Distance (d): total path length. A scalar. Always ≥ 0. Path-dependent.",
+        "The sign of Δx tells you direction, not just magnitude.",
+        "Always choose a reference frame and positive direction before solving any problem.",
+      ],
+    },
   },
   projectile: {
     title: "Projectile Motion",
@@ -261,6 +333,48 @@ const FORMULAS = [
       { tex: "T = 2\\pi\\sqrt{\\frac{m}{k}}",  label: "Spring-mass" },
       { tex: "\\omega = \\sqrt{\\frac{k}{m}}", label: "Angular frequency" },
       { tex: "f = \\frac{1}{T}",               label: "Frequency" },
+    ]
+  },
+  {
+    id: "f5", label: "Position",
+    display: "x(t)",
+    what: "Position as a function of time — where the object is on the axis at time t, measured from the origin.",
+    real: "x(3s) = +12m means: at t=3 seconds, the object is 12 meters to the right of where we defined zero to be.",
+    vars: [
+      { tex: "x",     meaning: "position (m)" },
+      { tex: "t",     meaning: "time (s)" },
+      { tex: "x = 0", meaning: "origin (chosen reference point)" },
+    ],
+    group: [
+      { tex: "x(t)", label: "Position function" },
+    ]
+  },
+  {
+    id: "f6", label: "Displacement",
+    display: "\\Delta x = x_f - x_i",
+    what: "Change in position. End minus start. Direction encoded in the sign.",
+    real: "Start at x=2m, end at x=-1m: Δx = -1 - 2 = -3m. Moved 3 meters in the negative direction.",
+    vars: [
+      { tex: "\\Delta x", meaning: "displacement (m), can be negative" },
+      { tex: "x_f",       meaning: "final position (m)" },
+      { tex: "x_i",       meaning: "initial position (m)" },
+    ],
+    group: [
+      { tex: "\\Delta x = x_f - x_i", label: "End minus start" },
+    ]
+  },
+  {
+    id: "f7", label: "Average Velocity (from graph slope)",
+    display: "\\bar{v} = \\dfrac{\\Delta x}{\\Delta t}",
+    what: "Average rate of position change over a time interval. This is the slope of the x-t graph.",
+    real: "Move 60m east in 10 seconds: v̄ = 60/10 = 6 m/s east. Move 60m and come back in 10s: v̄ = 0/10 = 0 m/s.",
+    vars: [
+      { tex: "\\bar{v}",  meaning: "average velocity (m/s), can be negative" },
+      { tex: "\\Delta x", meaning: "displacement (m)" },
+      { tex: "\\Delta t", meaning: "time elapsed (s), always positive" },
+    ],
+    group: [
+      { tex: "\\bar{v} = \\frac{\\Delta x}{\\Delta t}", label: "Average velocity from displacement and elapsed time" },
     ]
   },
 ];
@@ -1245,6 +1359,9 @@ const ConceptView = ({ conceptId, compact = false, library = false }) => {
     : compact
       ? "30px 30px 34px"
       : "40px 52px 44px";
+  const hasStructuredSections = Array.isArray(c.sections) && c.sections.length > 0;
+  const contentMaxWidth = library ? 760 : compact ? "100%" : 580;
+  const cardMaxWidth = library ? 760 : compact ? "100%" : 560;
 
   return (
     <div key={conceptId} className="fadeIn" style={{
@@ -1268,40 +1385,285 @@ const ConceptView = ({ conceptId, compact = false, library = false }) => {
         {c.title}
       </h1>
 
-      <p style={{
-        fontSize: 14, color: T.text1,
-        lineHeight: 1.75, marginBottom: library ? 34 : 28,
-        maxWidth: library ? 760 : compact ? "100%" : 580,
-      }}>
-        {c.summary}
-      </p>
+      {hasStructuredSections ? (
+        <div style={{ maxWidth: cardMaxWidth }}>
+          {c.sections.map((section, sectionIndex) => (
+            <section
+              key={section.id || section.title || sectionIndex}
+              style={{ marginBottom: sectionIndex < c.sections.length - 1 ? 28 : 0 }}
+            >
+              <h2 style={{
+                fontFamily: T.cardSans,
+                fontSize: library ? 22 : 20,
+                fontWeight: 600,
+                color: T.navy,
+                marginBottom: 10,
+              }}>
+                {section.title}
+              </h2>
 
-      <div style={{
-        background: T.blueLight, borderRadius: 10,
-        padding: library ? "24px 28px" : "20px 24px", border: `1px solid ${T.border}`,
-        maxWidth: library ? 760 : compact ? "100%" : 560,
-      }}>
-        <div style={{
-          fontSize: 10, fontWeight: 600, color: T.blue,
-          letterSpacing: "0.1em", textTransform: "uppercase", marginBottom: library ? 18 : 14,
-        }}>
-          Core Equations
-        </div>
-        {c.equations.map((eq, i) => (
-          <div key={i} style={{
-            display: "flex", alignItems: "center", gap: library ? 22 : 16,
-            padding: "12px 0",
-            borderBottom: i < c.equations.length - 1 ? `1px solid ${T.border}` : "none",
-          }}>
-            <div style={{ minWidth: 0 }}>
-              <Katex tex={eq.tex} style={{ fontSize: library ? 17 : 15, color: T.navy }} />
+              {section.theory && (
+                <p style={{
+                  fontSize: 14,
+                  color: T.text1,
+                  lineHeight: 1.75,
+                  marginBottom: 14,
+                  maxWidth: contentMaxWidth,
+                }}>
+                  {section.theory}
+                </p>
+              )}
+
+              {section.realWorld && (
+                <div style={{
+                  marginBottom: 14,
+                  background: T.bg2,
+                  border: `1px solid ${T.border}`,
+                  borderRadius: 8,
+                  padding: "12px 14px",
+                }}>
+                  <div className="label" style={{ marginBottom: 6, color: T.blue }}>
+                    Real-World Translation
+                  </div>
+                  <div style={{ fontSize: 13, color: T.text1, lineHeight: 1.7, fontStyle: "italic" }}>
+                    {section.realWorld}
+                  </div>
+                </div>
+              )}
+
+              {section.table && (
+                <div style={{
+                  marginBottom: 14,
+                  border: `1px solid ${T.border}`,
+                  borderRadius: 8,
+                  overflow: "hidden",
+                  background: T.bg1,
+                }}>
+                  <table style={{ width: "100%", borderCollapse: "collapse" }}>
+                    <thead>
+                      <tr style={{ background: T.blueLight }}>
+                        {section.table.headers.map((header, idx) => (
+                          <th
+                            key={`${section.id}-head-${idx}`}
+                            style={{
+                              padding: "9px 10px",
+                              borderBottom: `1px solid ${T.border}`,
+                              borderRight: idx < section.table.headers.length - 1 ? `1px solid ${T.border}` : "none",
+                              fontFamily: T.brandMono,
+                              fontSize: 10,
+                              letterSpacing: "0.08em",
+                              textTransform: "uppercase",
+                              color: T.blue,
+                              textAlign: idx === 0 ? "left" : "center",
+                              fontWeight: 600,
+                            }}
+                          >
+                            {header || " "}
+                          </th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {section.table.rows.map((row, rowIdx) => (
+                        <tr key={`${section.id}-row-${rowIdx}`}>
+                          {row.map((cell, cellIdx) => (
+                            <td
+                              key={`${section.id}-cell-${rowIdx}-${cellIdx}`}
+                              style={{
+                                padding: "9px 10px",
+                                borderBottom: rowIdx < section.table.rows.length - 1 ? `1px solid ${T.border}` : "none",
+                                borderRight: cellIdx < row.length - 1 ? `1px solid ${T.border}` : "none",
+                                fontSize: 13,
+                                color: cellIdx === 0 ? T.text1 : T.text2,
+                                fontWeight: cellIdx === 0 ? 500 : 400,
+                                textAlign: cellIdx === 0 ? "left" : "center",
+                                lineHeight: 1.6,
+                              }}
+                            >
+                              {cell}
+                            </td>
+                          ))}
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+
+              {section.keyBehaviors?.length > 0 && (
+                <div style={{ marginBottom: 14 }}>
+                  <div className="label" style={{ marginBottom: 8, color: T.blue }}>
+                    Key Graph Behaviors
+                  </div>
+                  <ul style={{ listStyle: "none", padding: 0, margin: 0 }}>
+                    {section.keyBehaviors.map((behavior, behaviorIdx) => (
+                      <li
+                        key={`${section.id}-behavior-${behaviorIdx}`}
+                        style={{
+                          fontSize: 13,
+                          color: T.text1,
+                          lineHeight: 1.75,
+                          marginBottom: 5,
+                        }}
+                      >
+                        {behavior}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              {section.equations?.length > 0 && (
+                <div style={{
+                  marginBottom: 14,
+                  background: T.blueLight,
+                  borderRadius: 8,
+                  border: `1px solid ${T.border}`,
+                  padding: "14px 16px",
+                }}>
+                  <div className="label" style={{ marginBottom: 10, color: T.blue }}>
+                    Core Equations
+                  </div>
+                  {section.equations.map((eq, i) => (
+                    <div key={`${section.id}-eq-${i}`} style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 12,
+                      padding: "10px 0",
+                      borderBottom: i < section.equations.length - 1 ? `1px solid ${T.border}` : "none",
+                    }}>
+                      <div style={{ minWidth: 0 }}>
+                        <Katex tex={eq.tex} style={{ fontSize: library ? 17 : 15, color: T.navy }} />
+                      </div>
+                      {eq.label && (
+                        <span style={{ fontSize: 12, color: T.text3, fontStyle: "italic", flex: 1 }}>
+                          {eq.label}
+                        </span>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {section.note && (
+                <div style={{
+                  marginBottom: 14,
+                  fontSize: 12,
+                  color: T.text2,
+                  lineHeight: 1.65,
+                }}>
+                  {section.note}
+                </div>
+              )}
+
+              {section.insight && (
+                <div style={{
+                  marginBottom: 14,
+                  padding: "10px 12px",
+                  borderRadius: 8,
+                  border: "1px solid #fcd34d",
+                  borderLeft: "4px solid #d97706",
+                  background: "#fffbeb",
+                }}>
+                  <div className="label" style={{ marginBottom: 6, color: "#b45309" }}>
+                    Key Insight
+                  </div>
+                  <div style={{ fontSize: 13, color: T.text1, lineHeight: 1.7 }}>
+                    {section.insight}
+                  </div>
+                </div>
+              )}
+
+              {section.consequence && (
+                <div style={{
+                  marginBottom: 14,
+                  padding: "12px 14px",
+                  borderRadius: 8,
+                  border: "1px solid #fcd34d",
+                  borderLeft: "4px solid #d97706",
+                  background: "#fffbeb",
+                }}>
+                  <div className="label" style={{ marginBottom: 6, color: "#b45309" }}>
+                    Real Consequence
+                  </div>
+                  <div style={{ fontSize: 13, color: T.text1, lineHeight: 1.72 }}>
+                    {section.consequence}
+                  </div>
+                </div>
+              )}
+            </section>
+          ))}
+
+          {c.summaryBox && (
+            <div style={{
+              marginTop: 28,
+              background: T.blueLight,
+              borderRadius: 10,
+              border: `1px solid ${T.border2}`,
+              padding: library ? "20px 22px" : "18px 20px",
+            }}>
+              <div style={{
+                fontFamily: T.cardSans,
+                fontSize: 18,
+                fontWeight: 600,
+                color: T.navy,
+                marginBottom: 10,
+              }}>
+                {c.summaryBox.title}
+              </div>
+              <ul style={{ listStyle: "none", margin: 0, padding: 0 }}>
+                {c.summaryBox.bullets?.map((bullet, i) => (
+                  <li key={`${conceptId}-summary-${i}`} style={{
+                    fontSize: 13,
+                    color: T.text1,
+                    lineHeight: 1.75,
+                    marginBottom: i < c.summaryBox.bullets.length - 1 ? 6 : 0,
+                  }}>
+                    {bullet}
+                  </li>
+                ))}
+              </ul>
             </div>
-            <span style={{ fontSize: library ? 14 : 13, color: T.text3, fontStyle: "italic", flex: 1 }}>
-              {eq.label}
-            </span>
+          )}
+        </div>
+      ) : (
+        <>
+          <p style={{
+            fontSize: 14, color: T.text1,
+            lineHeight: 1.75, marginBottom: library ? 34 : 28,
+            maxWidth: contentMaxWidth,
+          }}>
+            {c.summary}
+          </p>
+
+          <div style={{
+            background: T.blueLight, borderRadius: 10,
+            padding: library ? "24px 28px" : "20px 24px", border: `1px solid ${T.border}`,
+            maxWidth: cardMaxWidth,
+          }}>
+            <div style={{
+              fontSize: 10, fontWeight: 600, color: T.blue,
+              letterSpacing: "0.1em", textTransform: "uppercase", marginBottom: library ? 18 : 14,
+            }}>
+              Core Equations
+            </div>
+            {c.equations.map((eq, i) => (
+              <div key={i} style={{
+                display: "flex", alignItems: "center", gap: library ? 22 : 16,
+                padding: "12px 0",
+                borderBottom: i < c.equations.length - 1 ? `1px solid ${T.border}` : "none",
+              }}>
+                <div style={{ minWidth: 0 }}>
+                  <Katex tex={eq.tex} style={{ fontSize: library ? 17 : 15, color: T.navy }} />
+                </div>
+                <span style={{ fontSize: library ? 14 : 13, color: T.text3, fontStyle: "italic", flex: 1 }}>
+                  {eq.label}
+                </span>
+              </div>
+            ))}
           </div>
-        ))}
-      </div>
+        </>
+      )}
     </div>
   );
 };

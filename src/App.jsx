@@ -1376,10 +1376,11 @@ const ConceptView = ({ conceptId, compact = false, library = false }) => {
     ? "52px 64px 52px"
     : compact
       ? "30px 30px 34px"
-      : "40px 52px 44px";
+      : "48px 60px 56px";
   const hasStructuredSections = Array.isArray(c.sections) && c.sections.length > 0;
-  const contentMaxWidth = library ? 760 : compact ? "100%" : 580;
-  const cardMaxWidth = library ? 760 : compact ? "100%" : 560;
+  const contentMaxWidth = library ? 760 : compact ? "100%" : 860;
+  const cardMaxWidth = library ? 760 : compact ? "100%" : 860;
+  const centerReading = !library && !compact;
 
   return (
     <div key={conceptId} className="fadeIn" style={{
@@ -1404,7 +1405,7 @@ const ConceptView = ({ conceptId, compact = false, library = false }) => {
       </h1>
 
       {hasStructuredSections ? (
-        <div style={{ maxWidth: cardMaxWidth }}>
+        <div style={{ maxWidth: cardMaxWidth, margin: centerReading ? "0 auto" : 0 }}>
           {c.sections.map((section, sectionIndex) => (
             <section
               key={section.id || section.title || sectionIndex}
@@ -1426,7 +1427,7 @@ const ConceptView = ({ conceptId, compact = false, library = false }) => {
                   color: T.text1,
                   lineHeight: 1.75,
                   marginBottom: 14,
-                  maxWidth: contentMaxWidth,
+                  maxWidth: "100%",
                 }}>
                   {section.theory}
                 </p>
@@ -1650,39 +1651,41 @@ const ConceptView = ({ conceptId, compact = false, library = false }) => {
         </div>
       ) : (
         <>
-          <p style={{
-            fontSize: 14, color: T.text1,
-            lineHeight: 1.75, marginBottom: library ? 34 : 28,
-            maxWidth: contentMaxWidth,
-          }}>
-            {c.summary}
-          </p>
-
-          <div style={{
-            background: T.blueLight, borderRadius: 10,
-            padding: library ? "24px 28px" : "20px 24px", border: `1px solid ${T.border}`,
-            maxWidth: cardMaxWidth,
-          }}>
-            <div style={{
-              fontSize: 10, fontWeight: 600, color: T.blue,
-              letterSpacing: "0.1em", textTransform: "uppercase", marginBottom: library ? 18 : 14,
+          <div style={{ maxWidth: cardMaxWidth, margin: centerReading ? "0 auto" : 0 }}>
+            <p style={{
+              fontSize: 14, color: T.text1,
+              lineHeight: 1.75, marginBottom: library ? 34 : 28,
+              maxWidth: contentMaxWidth,
             }}>
-              Core Equations
-            </div>
-            {c.equations.map((eq, i) => (
-              <div key={i} style={{
-                display: "flex", alignItems: "center", gap: library ? 22 : 16,
-                padding: "12px 0",
-                borderBottom: i < c.equations.length - 1 ? `1px solid ${T.border}` : "none",
+              {c.summary}
+            </p>
+
+            <div style={{
+              background: T.blueLight, borderRadius: 10,
+              padding: library ? "24px 28px" : "20px 24px", border: `1px solid ${T.border}`,
+              maxWidth: cardMaxWidth,
+            }}>
+              <div style={{
+                fontSize: 10, fontWeight: 600, color: T.blue,
+                letterSpacing: "0.1em", textTransform: "uppercase", marginBottom: library ? 18 : 14,
               }}>
-                <div style={{ minWidth: 0, overflowX: "auto" }}>
-                  <Katex tex={eq.tex} style={{ fontSize: library ? 17 : 15, color: T.navy }} />
-                </div>
-                <span style={{ fontSize: library ? 14 : 13, color: T.text3, fontStyle: "italic", flex: 1 }}>
-                  {eq.label}
-                </span>
+                Core Equations
               </div>
-            ))}
+              {c.equations.map((eq, i) => (
+                <div key={i} style={{
+                  display: "flex", alignItems: "center", gap: library ? 22 : 16,
+                  padding: "12px 0",
+                  borderBottom: i < c.equations.length - 1 ? `1px solid ${T.border}` : "none",
+                }}>
+                  <div style={{ minWidth: 0, overflowX: "auto" }}>
+                    <Katex tex={eq.tex} style={{ fontSize: library ? 17 : 15, color: T.navy }} />
+                  </div>
+                  <span style={{ fontSize: library ? 14 : 13, color: T.text3, fontStyle: "italic", flex: 1 }}>
+                    {eq.label}
+                  </span>
+                </div>
+              ))}
+            </div>
           </div>
         </>
       )}
@@ -2216,21 +2219,23 @@ const DragHandle = ({
       position: "absolute",
       top: 0,
       bottom: 0,
-      width: 12,
-      [side]: -6,
+      width: 8,
+      [side]: -4,
       zIndex: 20,
       cursor: disabled ? "default" : "col-resize",
       display: "flex",
       alignItems: "stretch",
       justifyContent: "center",
+      background: "transparent",
+      flexShrink: 0,
     }}
   >
     <div style={{
-      width: 4,
+      width: 2,
       height: "100%",
-      background: active ? T.blue : hovered ? T.border2 : "transparent",
+      background: active ? "rgba(29, 78, 216, 0.6)" : "rgba(29, 78, 216, 0.3)",
       opacity: active || hovered ? 1 : 0,
-      transition: "opacity 0.15s ease, background 0.15s ease",
+      transition: "opacity 0.15s ease",
       pointerEvents: "none",
     }} />
   </div>
@@ -2701,6 +2706,7 @@ export default function App() {
             ref={mainContentRef}
             style={{
               flex: 1,
+              width: "100%",
               minWidth: 0,
               display: "flex",
               overflow: "hidden",
@@ -2731,18 +2737,21 @@ export default function App() {
                 </div>
               </div>
             ) : (
-              <div style={{ flex: 1, display: "flex", overflow: "hidden", height: "100%" }}>
+              <div style={{ flex: 1, width: "100%", minWidth: 0, display: "flex", overflow: "hidden", height: "100%" }}>
                 {(!panelOpen || showConceptOnlyInConstrained || !constrainedCanvas) && (
                   <div style={{
                     position: "relative",
-                    flexShrink: 0,
+                    flex: panelOpen ? "0 0 auto" : 1,
+                    flexShrink: panelOpen ? 0 : 1,
                     width: panelOpen ? conceptRenderWidth : "100%",
                     minWidth: panelOpen ? PANEL_LIMITS.concept.min : 0,
-                    maxWidth: panelOpen ? PANEL_LIMITS.concept.max : "none",
+                    maxWidth: panelOpen ? PANEL_LIMITS.concept.max : "100%",
                     transition: activeHandle === "B" ? "none" : "width 0.25s ease",
                     height: "100%",
                     overflowY: "auto",
                     overflowX: "hidden",
+                    display: "flex",
+                    flexDirection: "column",
                     borderRight: panelOpen && !constrainedCanvas ? `1px solid ${T.border}` : "none",
                     background: T.bg1,
                     boxShadow: panelOpen && !constrainedCanvas ? "2px 0 8px rgba(0,0,0,0.04)" : "none",

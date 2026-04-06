@@ -2196,50 +2196,66 @@ const BackHomeButton = ({ onClick }) => {
   );
 };
 
-const DragHandle = ({
+const ResizeHandle = ({
   id,
   side = "right",
-  active = false,
-  hovered = false,
   disabled = false,
-  onMouseEnter,
-  onMouseLeave,
   onMouseDown,
   onDoubleClick,
-}) => (
-  <div
-    role="separator"
-    aria-orientation="vertical"
-    aria-label={`${id} resize handle`}
-    onMouseEnter={disabled ? undefined : onMouseEnter}
-    onMouseLeave={disabled ? undefined : onMouseLeave}
-    onMouseDown={disabled ? undefined : onMouseDown}
-    onDoubleClick={disabled ? undefined : onDoubleClick}
-    style={{
-      position: "absolute",
-      top: 0,
-      bottom: 0,
-      width: 8,
-      [side]: -4,
-      zIndex: 20,
-      cursor: disabled ? "default" : "col-resize",
-      display: "flex",
-      alignItems: "stretch",
-      justifyContent: "center",
-      background: "transparent",
-      flexShrink: 0,
-    }}
-  >
-    <div style={{
-      width: 2,
-      height: "100%",
-      background: active ? "rgba(29, 78, 216, 0.6)" : "rgba(29, 78, 216, 0.3)",
-      opacity: active || hovered ? 1 : 0,
-      transition: "opacity 0.15s ease",
-      pointerEvents: "none",
-    }} />
-  </div>
-);
+}) => {
+  const [hovered, setHovered] = useState(false);
+  const [dragging, setDragging] = useState(false);
+
+  useEffect(() => {
+    if (!dragging) return undefined;
+    const onUp = () => setDragging(false);
+    document.addEventListener("mouseup", onUp);
+    window.addEventListener("mouseleave", onUp);
+    return () => {
+      document.removeEventListener("mouseup", onUp);
+      window.removeEventListener("mouseleave", onUp);
+    };
+  }, [dragging]);
+
+  return (
+    <div
+      role="separator"
+      aria-orientation="vertical"
+      aria-label={`${id} resize handle`}
+      onMouseDown={disabled ? undefined : (e) => { setDragging(true); onMouseDown?.(e); }}
+      onMouseEnter={disabled ? undefined : () => setHovered(true)}
+      onMouseLeave={disabled ? undefined : () => setHovered(false)}
+      onDoubleClick={disabled ? undefined : onDoubleClick}
+      style={{
+        position: "absolute",
+        top: 0,
+        bottom: 0,
+        width: 12,
+        [side]: -6,
+        marginLeft: -6,
+        marginRight: -6,
+        zIndex: 20,
+        cursor: disabled ? "default" : "col-resize",
+        background: "transparent",
+        flexShrink: 0,
+      }}
+    >
+      <div style={{
+        position: "absolute",
+        top: 0,
+        bottom: 0,
+        left: "50%",
+        transform: "translateX(-50%)",
+        width: 2,
+        background: hovered || dragging
+          ? "rgba(29, 78, 216, 0.35)"
+          : "transparent",
+        transition: "background 0.15s ease",
+        pointerEvents: "none",
+      }} />
+    </div>
+  );
+};
 
 export default function App() {
   const [activeMode, setActiveMode] = useState("home"); // home | canvas | library | problems | tutor
@@ -2256,7 +2272,6 @@ export default function App() {
   const [tutorWidth, setTutorWidth] = useState(PANEL_DEFAULTS.tutor);
   const [mainContentWidth, setMainContentWidth] = useState(0);
   const [showConceptInTightLayout, setShowConceptInTightLayout] = useState(false);
-  const [hoveredHandle, setHoveredHandle] = useState(null);
   const [activeHandle, setActiveHandle] = useState(null);
   const [isMobile, setIsMobile] = useState(window.innerWidth < 900);
   const [showOnboarding, setShowOnboarding] = useState(() => !localStorage.getItem("phasora_onboarded"));
@@ -2617,13 +2632,9 @@ export default function App() {
               />
             </div>
             {sidebarOpen && (
-              <DragHandle
+              <ResizeHandle
                 id="Boundary A"
                 side="right"
-                active={activeHandle === "A"}
-                hovered={hoveredHandle === "A"}
-                onMouseEnter={() => setHoveredHandle("A")}
-                onMouseLeave={() => setHoveredHandle((h) => (h === "A" ? null : h))}
                 onMouseDown={(e) => startDragging("A", e)}
                 onDoubleClick={() => resetBoundary("A")}
               />
@@ -2689,13 +2700,9 @@ export default function App() {
               </div>
             )}
             {showFormulas && (
-              <DragHandle
+              <ResizeHandle
                 id="Boundary C"
                 side="right"
-                active={activeHandle === "C"}
-                hovered={hoveredHandle === "C"}
-                onMouseEnter={() => setHoveredHandle("C")}
-                onMouseLeave={() => setHoveredHandle((h) => (h === "C" ? null : h))}
                 onMouseDown={(e) => startDragging("C", e)}
                 onDoubleClick={() => resetBoundary("C")}
               />
@@ -2748,8 +2755,7 @@ export default function App() {
                     maxWidth: panelOpen ? PANEL_LIMITS.concept.max : "100%",
                     transition: activeHandle === "B" ? "none" : "width 0.25s ease",
                     height: "100%",
-                    overflowY: "auto",
-                    overflowX: "hidden",
+                    overflow: "visible",
                     display: "flex",
                     flexDirection: "column",
                     borderRight: panelOpen && !constrainedCanvas ? `1px solid ${T.border}` : "none",
@@ -2758,36 +2764,34 @@ export default function App() {
                     zIndex: panelOpen ? 1 : "auto",
                     pointerEvents: isDragging ? "none" : "auto",
                   }}>
-                    {constrainedCanvas && panelOpen && showConceptOnlyInConstrained && (
-                      <div style={{ padding: "12px 14px 0" }}>
-                        <button
-                          onClick={() => setShowConceptInTightLayout(false)}
-                          style={{
-                            padding: "5px 10px",
-                            borderRadius: 999,
-                            border: `1px solid ${T.border}`,
-                            background: T.bg1,
-                            color: T.text1,
-                            fontFamily: T.brandMono,
-                            fontSize: 10,
-                            letterSpacing: "0.06em",
-                            textTransform: "uppercase",
-                            transition: "all 0.15s ease",
-                          }}
-                        >
-                          Back To Simulation
-                        </button>
-                      </div>
-                    )}
-                    <ConceptView conceptId={activeConcept} compact={panelOpen} />
+                    <div style={{ flex: 1, minHeight: 0, overflowY: "auto", overflowX: "hidden" }}>
+                      {constrainedCanvas && panelOpen && showConceptOnlyInConstrained && (
+                        <div style={{ padding: "12px 14px 0" }}>
+                          <button
+                            onClick={() => setShowConceptInTightLayout(false)}
+                            style={{
+                              padding: "5px 10px",
+                              borderRadius: 999,
+                              border: `1px solid ${T.border}`,
+                              background: T.bg1,
+                              color: T.text1,
+                              fontFamily: T.brandMono,
+                              fontSize: 10,
+                              letterSpacing: "0.06em",
+                              textTransform: "uppercase",
+                              transition: "all 0.15s ease",
+                            }}
+                          >
+                            Back To Simulation
+                          </button>
+                        </div>
+                      )}
+                      <ConceptView conceptId={activeConcept} compact={panelOpen} />
+                    </div>
                     {panelOpen && !constrainedCanvas && !showConceptOnlyInConstrained && (
-                      <DragHandle
+                      <ResizeHandle
                         id="Boundary B"
                         side="right"
-                        active={activeHandle === "B"}
-                        hovered={hoveredHandle === "B"}
-                        onMouseEnter={() => setHoveredHandle("B")}
-                        onMouseLeave={() => setHoveredHandle((h) => (h === "B" ? null : h))}
                         onMouseDown={(e) => startDragging("B", e)}
                         onDoubleClick={() => resetBoundary("B")}
                       />
@@ -2900,13 +2904,9 @@ export default function App() {
               </div>
             )}
             {showTutor && (
-              <DragHandle
+              <ResizeHandle
                 id="Boundary D"
                 side="left"
-                active={activeHandle === "D"}
-                hovered={hoveredHandle === "D"}
-                onMouseEnter={() => setHoveredHandle("D")}
-                onMouseLeave={() => setHoveredHandle((h) => (h === "D" ? null : h))}
                 onMouseDown={(e) => startDragging("D", e)}
                 onDoubleClick={() => resetBoundary("D")}
               />
@@ -2927,13 +2927,9 @@ export default function App() {
                 width={sidebarRenderWidth}
               />
             </div>
-            <DragHandle
+            <ResizeHandle
               id="Boundary A"
               side="right"
-              active={activeHandle === "A"}
-              hovered={hoveredHandle === "A"}
-              onMouseEnter={() => setHoveredHandle("A")}
-              onMouseLeave={() => setHoveredHandle((h) => (h === "A" ? null : h))}
               onMouseDown={(e) => startDragging("A", e)}
               onDoubleClick={() => resetBoundary("A")}
             />

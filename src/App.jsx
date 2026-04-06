@@ -399,7 +399,7 @@ const PANEL_LIMITS = {
   tutor: { min: 260, max: 480 },
 };
 
-const MIN_MAIN_WIDTH = 340;
+const MIN_MAIN_WIDTH = 320;
 
 const useResponsiveCanvasSize = (
   containerRef,
@@ -1733,10 +1733,8 @@ const CurriculumSidebar = ({
   onSelectConcept,
   width = 240,
   collapsed = false,
-  onToggleCollapse = null,
 }) => {
   const [hoveredConcept, setHoveredConcept] = useState(null);
-  const [hoveredToggle, setHoveredToggle] = useState(false);
 
   return (
     <aside style={{
@@ -1748,7 +1746,8 @@ const CurriculumSidebar = ({
       display: "flex",
       flexDirection: "column",
       overflow: "hidden",
-      transition: "width 0.22s ease",
+      padding: collapsed ? 0 : undefined,
+      transition: "width 0.25s ease",
     }}>
       {!collapsed && (
         <>
@@ -1756,54 +1755,23 @@ const CurriculumSidebar = ({
             padding: "16px 14px 14px",
             borderBottom: `1px solid ${T.border}`,
             display: "flex",
-            justifyContent: "space-between",
             alignItems: "center",
           }}>
-          <div>
-            <div style={{
-              fontFamily: T.brandMono,
-              fontSize: 10,
-              fontWeight: 500,
-              color: T.text3,
-              letterSpacing: "0.1em",
-              textTransform: "uppercase",
-            }}>
-              Classical Mechanics
-            </div>
-            <div style={{ marginTop: 4, fontSize: 14, fontWeight: 500, color: T.text1 }}>
-              Curriculum
-            </div>
-          </div>
-          {onToggleCollapse && (
-            <button
-              aria-label="Collapse sidebar"
-              title="Collapse sidebar"
-              onClick={onToggleCollapse}
-              onMouseEnter={() => setHoveredToggle(true)}
-              onMouseLeave={() => setHoveredToggle(false)}
-              style={{
-                width: 28,
-                height: 28,
-                borderRadius: 6,
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                color: T.text2,
-                fontSize: 18,
-                background: hoveredToggle ? T.bg2 : "transparent",
-                transition: "all 0.15s ease",
-              }}
-            >
-              <span style={{
-                display: "inline-block",
-                transform: "rotate(180deg)",
-                transition: "transform 0.2s ease",
-                lineHeight: 1,
+            <div>
+              <div style={{
+                fontFamily: T.brandMono,
+                fontSize: 10,
+                fontWeight: 500,
+                color: T.text3,
+                letterSpacing: "0.1em",
+                textTransform: "uppercase",
               }}>
-                ›
-              </span>
-            </button>
-          )}
+                Classical Mechanics
+              </div>
+              <div style={{ marginTop: 4, fontSize: 14, fontWeight: 500, color: T.text1 }}>
+                Curriculum
+              </div>
+            </div>
           </div>
 
           <div style={{ flex: 1, overflowY: "auto", padding: "6px 0 10px" }}>
@@ -2039,6 +2007,8 @@ const HomePage = ({ onSelectMode }) => {
 const TopNav = ({
   activeMode,
   onGoHome,
+  showSidebar,
+  onToggleSidebar,
   showSim,
   canvasView,
   onToggleSim,
@@ -2106,32 +2076,42 @@ const TopNav = ({
       </button>
 
       {activeMode === "canvas" ? (
-        <div style={{
-          display: "flex",
-          gap: 6,
-          alignItems: "center",
-        }}>
-          {tabs.map((tab) => (
-            <button
-              key={tab.id}
-              onClick={tab.onClick}
-              onMouseEnter={() => setHoverTab(tab.id)}
-              onMouseLeave={() => setHoverTab(null)}
-              style={{
-                padding: "7px 14px",
-                borderRadius: 999,
-                fontFamily: T.brandMono,
-                fontSize: 11,
-                letterSpacing: "0.08em",
-                color: tab.active ? "#fff" : hoverTab === tab.id ? T.text1 : T.text2,
-                background: tab.active ? T.blue : hoverTab === tab.id ? "rgba(0,0,0,0.04)" : "transparent",
-                transition: "all 0.15s ease",
-              }}
-            >
-              {tab.label}
-            </button>
-          ))}
-        </div>
+        <>
+          <button
+            onClick={onToggleSidebar}
+            onMouseEnter={() => setHoverUtility("topics")}
+            onMouseLeave={() => setHoverUtility(null)}
+            style={utilityBtnStyle(showSidebar, hoverUtility === "topics")}
+          >
+            ⊞ TOPICS
+          </button>
+          <div style={{
+            display: "flex",
+            gap: 6,
+            alignItems: "center",
+          }}>
+            {tabs.map((tab) => (
+              <button
+                key={tab.id}
+                onClick={tab.onClick}
+                onMouseEnter={() => setHoverTab(tab.id)}
+                onMouseLeave={() => setHoverTab(null)}
+                style={{
+                  padding: "7px 14px",
+                  borderRadius: 999,
+                  fontFamily: T.brandMono,
+                  fontSize: 11,
+                  letterSpacing: "0.08em",
+                  color: tab.active ? "#fff" : hoverTab === tab.id ? T.text1 : T.text2,
+                  background: tab.active ? T.blue : hoverTab === tab.id ? "rgba(0,0,0,0.04)" : "transparent",
+                  transition: "all 0.15s ease",
+                }}
+              >
+                {tab.label}
+              </button>
+            ))}
+          </div>
+        </>
       ) : (
         <div style={{
           fontFamily: T.brandMono,
@@ -2266,7 +2246,6 @@ export default function App() {
   const [showTutor, setShowTutor] = useState(false);
   const [canvasView, setCanvasView] = useState("learn"); // learn | problems
   const [sidebarOpen, setSidebarOpen] = useState(true);
-  const [hoverSidebarOpenToggle, setHoverSidebarOpenToggle] = useState(false);
   const [sidebarWidth, setSidebarWidth] = useState(PANEL_DEFAULTS.sidebar);
   const [conceptWidth, setConceptWidth] = useState(PANEL_DEFAULTS.concept);
   const [formulaWidth, setFormulaWidth] = useState(PANEL_DEFAULTS.formulas);
@@ -2354,10 +2333,12 @@ export default function App() {
   ), [sidebarUsedWidth, showTutor, tutorWidth]);
 
   const getTutorMax = useCallback(() => (
-    clamp(
-      window.innerWidth - sidebarUsedWidth - (showFormulas ? formulaWidth : 0) - MIN_MAIN_WIDTH,
-      PANEL_LIMITS.tutor.min,
-      PANEL_LIMITS.tutor.max
+    Math.max(
+      0,
+      Math.min(
+        PANEL_LIMITS.tutor.max,
+        window.innerWidth - sidebarUsedWidth - (showFormulas ? formulaWidth : 0) - MIN_MAIN_WIDTH
+      )
     )
   ), [sidebarUsedWidth, showFormulas, formulaWidth]);
 
@@ -2372,7 +2353,7 @@ export default function App() {
     ? clamp(formulaWidth, PANEL_LIMITS.formulas.min, getFormulaMax())
     : 0;
   const tutorRenderWidth = showTutor
-    ? clamp(tutorWidth, PANEL_LIMITS.tutor.min, getTutorMax())
+    ? Math.max(0, Math.min(tutorWidth, getTutorMax()))
     : 0;
   const conceptRenderWidth = panelOpen
     ? clamp(conceptWidth, PANEL_LIMITS.concept.min, getConceptMax())
@@ -2454,7 +2435,7 @@ export default function App() {
       direction = 1;
     } else if (boundary === "D") {
       startWidth = tutorRenderWidth;
-      min = PANEL_LIMITS.tutor.min;
+      min = Math.min(PANEL_LIMITS.tutor.min, getTutorMax());
       max = getTutorMax();
       direction = -1;
     } else {
@@ -2600,9 +2581,11 @@ export default function App() {
       <GlobalStyle />
 
       {showTopNav && (
-        <TopNav
+      <TopNav
           activeMode={activeMode}
           onGoHome={goHome}
+          showSidebar={sidebarOpen}
+          onToggleSidebar={() => setSidebarOpen((s) => !s)}
           showSim={showSim}
           showFormulas={showFormulas}
           showTutor={showTutor}
@@ -2620,38 +2603,6 @@ export default function App() {
 
       {activeMode === "canvas" && (
         <div style={{ flex: 1, display: "flex", overflow: "hidden", position: "relative" }}>
-          {!sidebarOpen && (
-            <button
-              aria-label="Open curriculum"
-              title="Open curriculum"
-              onClick={() => setSidebarOpen(true)}
-              onMouseEnter={() => setHoverSidebarOpenToggle(true)}
-              onMouseLeave={() => setHoverSidebarOpenToggle(false)}
-              style={{
-                position: "absolute",
-                top: 12,
-                left: 12,
-                zIndex: 50,
-                width: 28,
-                height: 28,
-                borderRadius: 6,
-                background: T.bg1,
-                border: `1px solid ${hoverSidebarOpenToggle ? T.blueDim : T.border}`,
-                boxShadow: hoverSidebarOpenToggle
-                  ? "0 2px 8px rgba(0,0,0,0.12)"
-                  : "0 1px 4px rgba(0,0,0,0.08)",
-                color: T.blue,
-                fontSize: 18,
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                transition: "all 0.15s ease",
-                animation: "fadeIn 0.2s ease 0.08s both",
-              }}
-            >
-              ›
-            </button>
-          )}
           <div style={{ position: "relative", display: "flex", height: "100%", flexShrink: 0 }}>
             <div style={{ pointerEvents: isDragging ? "none" : "auto" }}>
               <CurriculumSidebar
@@ -2660,7 +2611,6 @@ export default function App() {
                 setExpandedGroup={setExpandedGroup}
                 onSelectConcept={selectConcept}
                 collapsed={!sidebarOpen}
-                onToggleCollapse={() => setSidebarOpen((s) => !s)}
                 width={sidebarRenderWidth}
               />
             </div>
@@ -2747,7 +2697,7 @@ export default function App() {
             style={{
               flex: 1,
               width: "100%",
-              minWidth: 0,
+              minWidth: MIN_MAIN_WIDTH,
               display: "flex",
               overflow: "hidden",
               transition: "all 0.25s ease",

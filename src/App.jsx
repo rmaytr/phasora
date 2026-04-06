@@ -48,6 +48,8 @@ const T = {
   cardSans:   "'DM Sans', 'Inter', system-ui, sans-serif",
 };
 
+const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
+
 // ─── API KEY (configured via .env.local — not exposed in UI) ──────────────────
 const API_KEY = import.meta.env.VITE_ANTHROPIC_API_KEY || "";
 
@@ -383,9 +385,25 @@ const VIZ_CONCEPT_IDS = new Set(
   CURRICULUM.flatMap((group) => group.concepts.filter((concept) => concept.hasViz).map((concept) => concept.id))
 );
 
+const PANEL_DEFAULTS = {
+  sidebar: 220,
+  concept: 380,
+  formulas: 300,
+  tutor: 320,
+};
+
+const PANEL_LIMITS = {
+  sidebar: { min: 160, max: 320 },
+  concept: { min: 200, max: 600 },
+  formulas: { min: 240, max: 480 },
+  tutor: { min: 260, max: 480 },
+};
+
+const MIN_MAIN_WIDTH = 340;
+
 const useResponsiveCanvasSize = (
   containerRef,
-  { minWidth = 320, minHeight = 280, maxHeight = 420, ratio = 0.42 } = {}
+  { minWidth = 220, minHeight = 280, maxHeight = 420, ratio = 0.42 } = {}
 ) => {
   const [size, setSize] = useState({ width: 900, height: 380 });
 
@@ -453,7 +471,7 @@ const SHOSim = () => {
   const [params, setParams] = useState({ mass: 1.0, k: 8.0, damping: 0.1, amplitude: 80 });
   const [readouts, setReadouts] = useState({ x: "0.000", v: "0.000", ke: "0.00", pe: "0.00" });
   const canvasSize = useResponsiveCanvasSize(canvasContainerRef, {
-    minWidth: 320,
+    minWidth: 220,
     minHeight: 300,
     maxHeight: 420,
     ratio: 0.42,
@@ -687,7 +705,7 @@ const ProjectileSim = () => {
   const [running, setRunning] = useState(true);
   const tRef = useRef(0);
   const canvasSize = useResponsiveCanvasSize(canvasContainerRef, {
-    minWidth: 320,
+    minWidth: 220,
     minHeight: 300,
     maxHeight: 420,
     ratio: 0.42,
@@ -1421,6 +1439,7 @@ const ConceptView = ({ conceptId, compact = false, library = false }) => {
                   border: `1px solid ${T.border}`,
                   borderRadius: 8,
                   padding: "12px 14px",
+                  width: "100%",
                 }}>
                   <div className="label" style={{ marginBottom: 6, color: T.blue }}>
                     Real-World Translation
@@ -1438,8 +1457,9 @@ const ConceptView = ({ conceptId, compact = false, library = false }) => {
                   borderRadius: 8,
                   overflow: "hidden",
                   background: T.bg1,
+                  width: "100%",
                 }}>
-                  <table style={{ width: "100%", borderCollapse: "collapse" }}>
+                  <table style={{ width: "100%", tableLayout: "fixed", borderCollapse: "collapse" }}>
                     <thead>
                       <tr style={{ background: T.blueLight }}>
                         {section.table.headers.map((header, idx) => (
@@ -1532,7 +1552,7 @@ const ConceptView = ({ conceptId, compact = false, library = false }) => {
                       padding: "10px 0",
                       borderBottom: i < section.equations.length - 1 ? `1px solid ${T.border}` : "none",
                     }}>
-                      <div style={{ minWidth: 0 }}>
+                      <div style={{ minWidth: 0, overflowX: "auto" }}>
                         <Katex tex={eq.tex} style={{ fontSize: library ? 17 : 15, color: T.navy }} />
                       </div>
                       {eq.label && (
@@ -1564,6 +1584,7 @@ const ConceptView = ({ conceptId, compact = false, library = false }) => {
                   border: "1px solid #fcd34d",
                   borderLeft: "4px solid #d97706",
                   background: "#fffbeb",
+                  width: "100%",
                 }}>
                   <div className="label" style={{ marginBottom: 6, color: "#b45309" }}>
                     Key Insight
@@ -1582,6 +1603,7 @@ const ConceptView = ({ conceptId, compact = false, library = false }) => {
                   border: "1px solid #fcd34d",
                   borderLeft: "4px solid #d97706",
                   background: "#fffbeb",
+                  width: "100%",
                 }}>
                   <div className="label" style={{ marginBottom: 6, color: "#b45309" }}>
                     Real Consequence
@@ -1653,7 +1675,7 @@ const ConceptView = ({ conceptId, compact = false, library = false }) => {
                 padding: "12px 0",
                 borderBottom: i < c.equations.length - 1 ? `1px solid ${T.border}` : "none",
               }}>
-                <div style={{ minWidth: 0 }}>
+                <div style={{ minWidth: 0, overflowX: "auto" }}>
                   <Katex tex={eq.tex} style={{ fontSize: library ? 17 : 15, color: T.navy }} />
                 </div>
                 <span style={{ fontSize: library ? 14 : 13, color: T.text3, fontStyle: "italic", flex: 1 }}>
@@ -1800,6 +1822,7 @@ const CurriculumSidebar = ({
                     display: "flex",
                     justifyContent: "space-between",
                     alignItems: "center",
+                    gap: 8,
                     fontFamily: T.brandMono,
                     fontSize: 10,
                     lineHeight: 1.4,
@@ -1813,7 +1836,15 @@ const CurriculumSidebar = ({
                     transition: "all 0.15s ease",
                   }}
                 >
-                  <span>{group.label}</span>
+                  <span style={{
+                    flex: 1,
+                    minWidth: 0,
+                    overflow: "hidden",
+                    textOverflow: "ellipsis",
+                    whiteSpace: "nowrap",
+                  }}>
+                    {group.label}
+                  </span>
                   {canOpen && (
                     <span style={{
                       fontSize: 16,
@@ -1862,7 +1893,14 @@ const CurriculumSidebar = ({
                           transition: "all 0.15s ease",
                         }}
                       >
-                        <span>{concept.label}</span>
+                        <span style={{
+                          display: "block",
+                          overflow: "hidden",
+                          textOverflow: "ellipsis",
+                          whiteSpace: "nowrap",
+                        }}>
+                          {concept.label}
+                        </span>
                       </button>
                     );
                   })}
@@ -2154,6 +2192,50 @@ const BackHomeButton = ({ onClick }) => {
     </button>
   );
 };
+
+const DragHandle = ({
+  id,
+  side = "right",
+  active = false,
+  hovered = false,
+  disabled = false,
+  onMouseEnter,
+  onMouseLeave,
+  onMouseDown,
+  onDoubleClick,
+}) => (
+  <div
+    role="separator"
+    aria-orientation="vertical"
+    aria-label={`${id} resize handle`}
+    onMouseEnter={disabled ? undefined : onMouseEnter}
+    onMouseLeave={disabled ? undefined : onMouseLeave}
+    onMouseDown={disabled ? undefined : onMouseDown}
+    onDoubleClick={disabled ? undefined : onDoubleClick}
+    style={{
+      position: "absolute",
+      top: 0,
+      bottom: 0,
+      width: 12,
+      [side]: -6,
+      zIndex: 20,
+      cursor: disabled ? "default" : "col-resize",
+      display: "flex",
+      alignItems: "stretch",
+      justifyContent: "center",
+    }}
+  >
+    <div style={{
+      width: 4,
+      height: "100%",
+      background: active ? T.blue : hovered ? T.border2 : "transparent",
+      opacity: active || hovered ? 1 : 0,
+      transition: "opacity 0.15s ease, background 0.15s ease",
+      pointerEvents: "none",
+    }} />
+  </div>
+);
+
 export default function App() {
   const [activeMode, setActiveMode] = useState("home"); // home | canvas | library | problems | tutor
   const [activeConcept, setActiveConcept] = useState("projectile");
@@ -2163,14 +2245,42 @@ export default function App() {
   const [showTutor, setShowTutor] = useState(false);
   const [canvasView, setCanvasView] = useState("learn"); // learn | problems
   const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [sidebarWidth, setSidebarWidth] = useState(PANEL_DEFAULTS.sidebar);
+  const [conceptWidth, setConceptWidth] = useState(PANEL_DEFAULTS.concept);
+  const [formulaWidth, setFormulaWidth] = useState(PANEL_DEFAULTS.formulas);
+  const [tutorWidth, setTutorWidth] = useState(PANEL_DEFAULTS.tutor);
   const [mainContentWidth, setMainContentWidth] = useState(0);
   const [showConceptInTightLayout, setShowConceptInTightLayout] = useState(false);
+  const [hoveredHandle, setHoveredHandle] = useState(null);
+  const [activeHandle, setActiveHandle] = useState(null);
   const [isMobile, setIsMobile] = useState(window.innerWidth < 900);
   const [showOnboarding, setShowOnboarding] = useState(() => !localStorage.getItem("phasora_onboarded"));
   const mainContentRef = useRef(null);
+  const dragRef = useRef({
+    dragging: false,
+    boundary: null,
+    startX: 0,
+    startWidth: 0,
+    min: 0,
+    max: 0,
+    direction: 1,
+  });
+  const bodyUserSelectRef = useRef("");
 
   useEffect(() => {
-    const onResize = () => setIsMobile(window.innerWidth < 900);
+    const onResize = () => {
+      const mobile = window.innerWidth < 900;
+      setIsMobile(mobile);
+      if (mobile && dragRef.current.dragging) {
+        document.body.style.userSelect = bodyUserSelectRef.current;
+        document.body.style.cursor = "";
+        dragRef.current.dragging = false;
+        setActiveHandle(null);
+        document.removeEventListener("mousemove", dragRef.current.onMouseMove);
+        document.removeEventListener("mouseup", dragRef.current.onMouseUp);
+        window.removeEventListener("mouseleave", dragRef.current.onMouseLeave);
+      }
+    };
     window.addEventListener("resize", onResize);
     return () => window.removeEventListener("resize", onResize);
   }, []);
@@ -2203,6 +2313,189 @@ export default function App() {
   const constrainedCanvas = panelOpen && mainContentWidth > 0 && mainContentWidth < 700;
   const showConceptOnlyInConstrained = constrainedCanvas && showConceptInTightLayout;
   const vizMode = activeConcept === "sho" ? "sho" : "projectile";
+  const isDragging = activeHandle !== null;
+  const sidebarUsedWidth = sidebarOpen
+    ? clamp(sidebarWidth, PANEL_LIMITS.sidebar.min, PANEL_LIMITS.sidebar.max)
+    : 50;
+
+  const getSidebarMax = useCallback(() => {
+    const rightOccupied = (activeMode === "canvas" && showFormulas ? formulaWidth : 0)
+      + (activeMode === "canvas" && showTutor ? tutorWidth : 0);
+    return clamp(window.innerWidth - rightOccupied - MIN_MAIN_WIDTH, PANEL_LIMITS.sidebar.min, PANEL_LIMITS.sidebar.max);
+  }, [activeMode, showFormulas, showTutor, formulaWidth, tutorWidth]);
+
+  const getFormulaMax = useCallback(() => (
+    clamp(
+      window.innerWidth - sidebarUsedWidth - (showTutor ? tutorWidth : 0) - MIN_MAIN_WIDTH,
+      PANEL_LIMITS.formulas.min,
+      PANEL_LIMITS.formulas.max
+    )
+  ), [sidebarUsedWidth, showTutor, tutorWidth]);
+
+  const getTutorMax = useCallback(() => (
+    clamp(
+      window.innerWidth - sidebarUsedWidth - (showFormulas ? formulaWidth : 0) - MIN_MAIN_WIDTH,
+      PANEL_LIMITS.tutor.min,
+      PANEL_LIMITS.tutor.max
+    )
+  ), [sidebarUsedWidth, showFormulas, formulaWidth]);
+
+  const getConceptMax = useCallback(() => (
+    clamp(mainContentWidth - 260, PANEL_LIMITS.concept.min, PANEL_LIMITS.concept.max)
+  ), [mainContentWidth]);
+
+  const sidebarRenderWidth = sidebarOpen
+    ? clamp(sidebarWidth, PANEL_LIMITS.sidebar.min, getSidebarMax())
+    : 50;
+  const formulaRenderWidth = showFormulas
+    ? clamp(formulaWidth, PANEL_LIMITS.formulas.min, getFormulaMax())
+    : 0;
+  const tutorRenderWidth = showTutor
+    ? clamp(tutorWidth, PANEL_LIMITS.tutor.min, getTutorMax())
+    : 0;
+  const conceptRenderWidth = panelOpen
+    ? clamp(conceptWidth, PANEL_LIMITS.concept.min, getConceptMax())
+    : conceptWidth;
+
+  const stopDragging = useCallback(() => {
+    if (!dragRef.current.dragging) return;
+    dragRef.current.dragging = false;
+    setActiveHandle(null);
+    document.body.style.userSelect = bodyUserSelectRef.current;
+    document.body.style.cursor = "";
+    document.removeEventListener("mousemove", dragRef.current.onMouseMove);
+    document.removeEventListener("mouseup", dragRef.current.onMouseUp);
+    window.removeEventListener("mouseleave", dragRef.current.onMouseLeave);
+  }, []);
+
+  const onDragMove = useCallback((e) => {
+    if (!dragRef.current.dragging || !dragRef.current.boundary) return;
+    const {
+      boundary,
+      startX,
+      startWidth,
+      min,
+      max,
+      direction,
+    } = dragRef.current;
+    const delta = (e.clientX - startX) * direction;
+    const nextWidth = clamp(startWidth + delta, min, max);
+
+    if (boundary === "A") {
+      setSidebarWidth((prev) => (prev === nextWidth ? prev : nextWidth));
+      return;
+    }
+    if (boundary === "B") {
+      setConceptWidth((prev) => (prev === nextWidth ? prev : nextWidth));
+      return;
+    }
+    if (boundary === "C") {
+      setFormulaWidth((prev) => (prev === nextWidth ? prev : nextWidth));
+      return;
+    }
+    if (boundary === "D") {
+      setTutorWidth((prev) => (prev === nextWidth ? prev : nextWidth));
+    }
+  }, []);
+
+  const onDragUp = useCallback(() => {
+    stopDragging();
+  }, [stopDragging]);
+
+  const onDragLeave = useCallback(() => {
+    stopDragging();
+  }, [stopDragging]);
+
+  const startDragging = useCallback((boundary, e) => {
+    if (isMobile) return;
+    e.preventDefault();
+    stopDragging();
+
+    let startWidth = 0;
+    let min = 0;
+    let max = 0;
+    let direction = 1;
+
+    if (boundary === "A") {
+      startWidth = sidebarRenderWidth;
+      min = PANEL_LIMITS.sidebar.min;
+      max = getSidebarMax();
+      direction = 1;
+    } else if (boundary === "B") {
+      startWidth = conceptRenderWidth;
+      min = PANEL_LIMITS.concept.min;
+      max = getConceptMax();
+      direction = 1;
+    } else if (boundary === "C") {
+      startWidth = formulaRenderWidth;
+      min = PANEL_LIMITS.formulas.min;
+      max = getFormulaMax();
+      direction = 1;
+    } else if (boundary === "D") {
+      startWidth = tutorRenderWidth;
+      min = PANEL_LIMITS.tutor.min;
+      max = getTutorMax();
+      direction = -1;
+    } else {
+      return;
+    }
+
+    dragRef.current = {
+      dragging: true,
+      boundary,
+      startX: e.clientX,
+      startWidth,
+      min,
+      max,
+      direction,
+      onMouseMove: onDragMove,
+      onMouseUp: onDragUp,
+      onMouseLeave: onDragLeave,
+    };
+    setActiveHandle(boundary);
+
+    bodyUserSelectRef.current = document.body.style.userSelect;
+    document.body.style.userSelect = "none";
+    document.body.style.cursor = "col-resize";
+
+    document.addEventListener("mousemove", onDragMove);
+    document.addEventListener("mouseup", onDragUp);
+    window.addEventListener("mouseleave", onDragLeave);
+  }, [
+    conceptRenderWidth,
+    formulaRenderWidth,
+    getConceptMax,
+    getFormulaMax,
+    getSidebarMax,
+    getTutorMax,
+    isMobile,
+    onDragLeave,
+    onDragMove,
+    onDragUp,
+    sidebarRenderWidth,
+    stopDragging,
+    tutorRenderWidth,
+  ]);
+
+  const resetBoundary = useCallback((boundary) => {
+    if (boundary === "A") {
+      setSidebarWidth(clamp(PANEL_DEFAULTS.sidebar, PANEL_LIMITS.sidebar.min, getSidebarMax()));
+      return;
+    }
+    if (boundary === "B") {
+      setConceptWidth(clamp(PANEL_DEFAULTS.concept, PANEL_LIMITS.concept.min, getConceptMax()));
+      return;
+    }
+    if (boundary === "C") {
+      setFormulaWidth(clamp(PANEL_DEFAULTS.formulas, PANEL_LIMITS.formulas.min, getFormulaMax()));
+      return;
+    }
+    if (boundary === "D") {
+      setTutorWidth(clamp(PANEL_DEFAULTS.tutor, PANEL_LIMITS.tutor.min, getTutorMax()));
+    }
+  }, [getConceptMax, getFormulaMax, getSidebarMax, getTutorMax]);
+
+  useEffect(() => () => stopDragging(), [stopDragging]);
 
   const toggleSim = () => {
     if (canvasView !== "learn") setCanvasView("learn");
@@ -2306,30 +2599,49 @@ export default function App() {
 
       {activeMode === "canvas" && (
         <div style={{ flex: 1, display: "flex", overflow: "hidden" }}>
-          <CurriculumSidebar
-            activeConcept={activeConcept}
-            expandedGroup={expandedGroup}
-            setExpandedGroup={setExpandedGroup}
-            onSelectConcept={selectConcept}
-            collapsed={!sidebarOpen}
-            onToggleCollapse={() => setSidebarOpen((s) => !s)}
-            width={244}
-          />
+          <div style={{ position: "relative", display: "flex", height: "100%", flexShrink: 0 }}>
+            <div style={{ pointerEvents: isDragging ? "none" : "auto" }}>
+              <CurriculumSidebar
+                activeConcept={activeConcept}
+                expandedGroup={expandedGroup}
+                setExpandedGroup={setExpandedGroup}
+                onSelectConcept={selectConcept}
+                collapsed={!sidebarOpen}
+                onToggleCollapse={() => setSidebarOpen((s) => !s)}
+                width={sidebarRenderWidth}
+              />
+            </div>
+            {sidebarOpen && (
+              <DragHandle
+                id="Boundary A"
+                side="right"
+                active={activeHandle === "A"}
+                hovered={hoveredHandle === "A"}
+                onMouseEnter={() => setHoveredHandle("A")}
+                onMouseLeave={() => setHoveredHandle((h) => (h === "A" ? null : h))}
+                onMouseDown={(e) => startDragging("A", e)}
+                onDoubleClick={() => resetBoundary("A")}
+              />
+            )}
+          </div>
 
           <div style={{
-            width: showFormulas ? 300 : 0,
+            width: formulaRenderWidth,
             flexShrink: 0,
-            overflow: "hidden",
-            transition: "width 0.25s ease",
+            overflow: "visible",
+            transition: activeHandle === "C" ? "none" : "width 0.25s ease",
+            position: "relative",
           }}>
             {showFormulas && (
               <div style={{
-                width: 300,
+                width: "100%",
                 height: "100%",
                 background: T.bg1,
                 borderRight: `1px solid ${T.border}`,
                 display: "flex",
                 flexDirection: "column",
+                overflow: "hidden",
+                pointerEvents: isDragging ? "none" : "auto",
               }}>
                 <div style={{
                   padding: "12px 14px",
@@ -2371,6 +2683,18 @@ export default function App() {
                 </div>
               </div>
             )}
+            {showFormulas && (
+              <DragHandle
+                id="Boundary C"
+                side="right"
+                active={activeHandle === "C"}
+                hovered={hoveredHandle === "C"}
+                onMouseEnter={() => setHoveredHandle("C")}
+                onMouseLeave={() => setHoveredHandle((h) => (h === "C" ? null : h))}
+                onMouseDown={(e) => startDragging("C", e)}
+                onDoubleClick={() => resetBoundary("C")}
+              />
+            )}
           </div>
 
           <div
@@ -2384,7 +2708,15 @@ export default function App() {
             }}
           >
             {canvasView === "problems" ? (
-              <div className="fadeIn" style={{ flex: 1, overflowY: "auto", padding: "40px 34px" }}>
+              <div
+                className="fadeIn"
+                style={{
+                  flex: 1,
+                  overflowY: "auto",
+                  padding: "40px 34px",
+                  pointerEvents: isDragging ? "none" : "auto",
+                }}
+              >
                 <div style={{ maxWidth: 720, margin: "0 auto" }}>
                   <div style={{ fontSize: 10, fontWeight: 600, color: T.blue, letterSpacing: "0.1em", textTransform: "uppercase", marginBottom: 10 }}>
                     Practice
@@ -2402,11 +2734,12 @@ export default function App() {
               <div style={{ flex: 1, display: "flex", overflow: "hidden", height: "100%" }}>
                 {(!panelOpen || showConceptOnlyInConstrained || !constrainedCanvas) && (
                   <div style={{
+                    position: "relative",
                     flexShrink: 0,
-                    width: panelOpen ? "clamp(280px, 38%, 420px)" : "100%",
-                    minWidth: panelOpen ? 280 : 0,
-                    maxWidth: panelOpen ? 420 : "none",
-                    transition: "all 0.25s ease",
+                    width: panelOpen ? conceptRenderWidth : "100%",
+                    minWidth: panelOpen ? PANEL_LIMITS.concept.min : 0,
+                    maxWidth: panelOpen ? PANEL_LIMITS.concept.max : "none",
+                    transition: activeHandle === "B" ? "none" : "width 0.25s ease",
                     height: "100%",
                     overflowY: "auto",
                     overflowX: "hidden",
@@ -2414,6 +2747,7 @@ export default function App() {
                     background: T.bg1,
                     boxShadow: panelOpen && !constrainedCanvas ? "2px 0 8px rgba(0,0,0,0.04)" : "none",
                     zIndex: panelOpen ? 1 : "auto",
+                    pointerEvents: isDragging ? "none" : "auto",
                   }}>
                     {constrainedCanvas && panelOpen && showConceptOnlyInConstrained && (
                       <div style={{ padding: "12px 14px 0" }}>
@@ -2437,6 +2771,18 @@ export default function App() {
                       </div>
                     )}
                     <ConceptView conceptId={activeConcept} compact={panelOpen} />
+                    {panelOpen && !constrainedCanvas && !showConceptOnlyInConstrained && (
+                      <DragHandle
+                        id="Boundary B"
+                        side="right"
+                        active={activeHandle === "B"}
+                        hovered={hoveredHandle === "B"}
+                        onMouseEnter={() => setHoveredHandle("B")}
+                        onMouseLeave={() => setHoveredHandle((h) => (h === "B" ? null : h))}
+                        onMouseDown={(e) => startDragging("B", e)}
+                        onDoubleClick={() => resetBoundary("B")}
+                      />
+                    )}
                   </div>
                 )}
 
@@ -2448,6 +2794,7 @@ export default function App() {
                     overflowX: "hidden",
                     height: "100%",
                     background: T.bg0,
+                    pointerEvents: isDragging ? "none" : "auto",
                   }}>
                     <div style={{
                       animation: "slideInRight 0.3s ease",
@@ -2487,20 +2834,23 @@ export default function App() {
           </div>
 
           <div style={{
-            width: showTutor ? 320 : 0,
+            width: tutorRenderWidth,
             flexShrink: 0,
-            overflow: "hidden",
-            transition: "width 0.25s ease",
+            overflow: "visible",
+            transition: activeHandle === "D" ? "none" : "width 0.25s ease",
+            position: "relative",
           }}>
             {showTutor && (
               <div style={{
-                width: 320,
+                width: "100%",
                 height: "100%",
                 background: T.bg1,
                 borderLeft: `1px solid ${T.border}`,
                 boxShadow: "-2px 0 8px rgba(0,0,0,0.05)",
                 display: "flex",
                 flexDirection: "column",
+                overflow: "hidden",
+                pointerEvents: isDragging ? "none" : "auto",
               }}>
                 <div style={{
                   padding: "12px 14px",
@@ -2540,20 +2890,46 @@ export default function App() {
                 </div>
               </div>
             )}
+            {showTutor && (
+              <DragHandle
+                id="Boundary D"
+                side="left"
+                active={activeHandle === "D"}
+                hovered={hoveredHandle === "D"}
+                onMouseEnter={() => setHoveredHandle("D")}
+                onMouseLeave={() => setHoveredHandle((h) => (h === "D" ? null : h))}
+                onMouseDown={(e) => startDragging("D", e)}
+                onDoubleClick={() => resetBoundary("D")}
+              />
+            )}
           </div>
         </div>
       )}
       {activeMode === "library" && (
         <div style={{ flex: 1, display: "flex", overflow: "hidden" }}>
-          <CurriculumSidebar
-            activeConcept={activeConcept}
-            expandedGroup={expandedGroup}
-            setExpandedGroup={setExpandedGroup}
-            onSelectConcept={selectConcept}
-            collapsed={false}
-            width={300}
-          />
-          <div style={{ flex: 1, overflowY: "auto", overflowX: "hidden" }}>
+          <div style={{ position: "relative", display: "flex", height: "100%", flexShrink: 0 }}>
+            <div style={{ pointerEvents: isDragging ? "none" : "auto" }}>
+              <CurriculumSidebar
+                activeConcept={activeConcept}
+                expandedGroup={expandedGroup}
+                setExpandedGroup={setExpandedGroup}
+                onSelectConcept={selectConcept}
+                collapsed={false}
+                width={sidebarRenderWidth}
+              />
+            </div>
+            <DragHandle
+              id="Boundary A"
+              side="right"
+              active={activeHandle === "A"}
+              hovered={hoveredHandle === "A"}
+              onMouseEnter={() => setHoveredHandle("A")}
+              onMouseLeave={() => setHoveredHandle((h) => (h === "A" ? null : h))}
+              onMouseDown={(e) => startDragging("A", e)}
+              onDoubleClick={() => resetBoundary("A")}
+            />
+          </div>
+          <div style={{ flex: 1, overflowY: "auto", overflowX: "hidden", pointerEvents: isDragging ? "none" : "auto" }}>
             <ConceptView conceptId={activeConcept} library />
           </div>
         </div>

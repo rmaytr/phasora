@@ -1366,11 +1366,9 @@ const TutorPanel = ({ starterPrompts = [], minHeight = 0 }) => {
 };
 
 // ─── ANIMATION BLOCK ─────────────────────────────────────────────────────────
-const AnimationBlock = ({ src, label, videoRef: externalVideoRef, containerRef: externalContainerRef }) => {
-  const internalVideoRef = useRef(null);
-  const internalContainerRef = useRef(null);
-  const videoRef = externalVideoRef || internalVideoRef;
-  const containerRef = externalContainerRef || internalContainerRef;
+const AnimationBlock = ({ src, label, caption }) => {
+  const videoRef = useRef(null);
+  const containerRef = useRef(null);
   const [isLoaded, setIsLoaded] = useState(false);
   const [hasError, setHasError] = useState(false);
 
@@ -1378,115 +1376,544 @@ const AnimationBlock = ({ src, label, videoRef: externalVideoRef, containerRef: 
     const observer = new IntersectionObserver(
       ([entry]) => {
         if (entry.isIntersecting) {
-          if (videoRef.current) {
-            videoRef.current.play().catch(() => {});
-          }
+          videoRef.current?.play().catch(() => {});
         } else {
-          if (videoRef.current) {
-            videoRef.current.pause();
-          }
+          videoRef.current?.pause();
         }
       },
       { threshold: 0.3, rootMargin: '0px 0px -10% 0px' }
     );
     if (containerRef.current) observer.observe(containerRef.current);
     return () => observer.disconnect();
-  }, [videoRef, containerRef]);
-
-  if (hasError) {
-    return (
-      <div
-        ref={containerRef}
-        style={{
-          margin: '24px 0',
-          borderRadius: 8,
-          overflow: 'hidden',
-          border: `1px solid ${T.border}`,
-          background: T.bg2,
-        }}
-      >
-        <div style={{
-          padding: '8px 14px',
-          borderBottom: `1px solid ${T.border}`,
-          display: 'flex',
-          alignItems: 'center',
-          gap: 8,
-          background: T.bg1,
-        }}>
-          <span style={{ fontFamily: T.mono, fontSize: 10, color: T.blue, letterSpacing: '0.1em', textTransform: 'uppercase' }}>
-            ▶ Animation
-          </span>
-          <span style={{ fontSize: 11, color: T.text2 }}>{label}</span>
-        </div>
-        <div style={{ padding: '48px 24px', textAlign: 'center', background: T.bg2 }}>
-          <div style={{ fontFamily: T.mono, fontSize: 11, color: T.text3, marginBottom: 8 }}>
-            ANIMATION NOT YET RENDERED
-          </div>
-          <div style={{ fontSize: 12, color: T.text2 }}>
-            Run: manim -pql animations/1_1_position_displacement.py PositionDisplacement
-          </div>
-        </div>
-      </div>
-    );
-  }
+  }, []);
 
   return (
-    <div
-      ref={containerRef}
-      style={{
-        margin: '24px 0',
-        borderRadius: 8,
-        overflow: 'hidden',
-        border: `1px solid ${T.border}`,
-        background: T.bg2,
-      }}
-    >
+    <div ref={containerRef} style={{
+      margin: '28px 0',
+      borderRadius: '8px',
+      overflow: 'hidden',
+      border: `1px solid ${T.border}`,
+      background: '#ffffff',
+    }}>
       <div style={{
         padding: '8px 14px',
         borderBottom: `1px solid ${T.border}`,
         display: 'flex',
         alignItems: 'center',
-        gap: 8,
-        background: T.bg1,
+        justifyContent: 'space-between',
+        background: T.bg2,
       }}>
-        <span style={{ fontFamily: T.mono, fontSize: 10, color: T.blue, letterSpacing: '0.1em', textTransform: 'uppercase' }}>
-          ▶ Animation
-        </span>
-        <span style={{ fontSize: 11, color: T.text2 }}>{label}</span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <span style={{
+            fontFamily: T.mono, fontSize: 9,
+            color: T.blue, letterSpacing: '0.12em',
+            textTransform: 'uppercase',
+          }}>▶ Animation</span>
+          <span style={{ fontSize: 11, color: T.text2 }}>{label}</span>
+        </div>
       </div>
-      <video
-        ref={videoRef}
-        src={src}
-        style={{ width: '100%', display: 'block', maxHeight: 400, background: '#ffffff' }}
-        loop
-        muted
-        playsInline
-        onLoadedData={() => setIsLoaded(true)}
-        onError={() => setHasError(true)}
-        preload="metadata"
-      />
-      {!isLoaded && !hasError && (
-        <div style={{ padding: 40, textAlign: 'center', color: T.text3, fontFamily: T.mono, fontSize: 11 }}>
-          Loading animation...
+
+      {hasError ? (
+        <div style={{
+          padding: '40px 24px', textAlign: 'center', background: T.bg2
+        }}>
+          <div style={{
+            fontFamily: T.mono, fontSize: 10,
+            color: T.text3, marginBottom: 8,
+            letterSpacing: '0.1em', textTransform: 'uppercase',
+          }}>Animation not yet rendered</div>
+          <div style={{ fontSize: 11, color: T.text2, lineHeight: 1.6 }}>
+            Run: <code style={{ fontFamily: T.mono, color: T.blue }}>
+              manim -pql {src.replace('/animations/', 'animations/').replace('.mp4', '.py')}
+            </code>
+          </div>
+        </div>
+      ) : (
+        <>
+          {!isLoaded && (
+            <div style={{
+              padding: '40px', textAlign: 'center',
+              color: T.text3, fontFamily: T.mono, fontSize: 10,
+              letterSpacing: '0.1em',
+            }}>
+              LOADING ANIMATION...
+            </div>
+          )}
+          <video
+            ref={videoRef}
+            src={src}
+            style={{
+              width: '100%', display: isLoaded ? 'block' : 'none',
+              maxHeight: '420px', background: '#ffffff',
+            }}
+            loop muted playsInline
+            onLoadedData={() => setIsLoaded(true)}
+            onError={() => setHasError(true)}
+            preload="metadata"
+          />
+        </>
+      )}
+
+      {caption && (
+        <div style={{
+          padding: '8px 14px',
+          borderTop: `1px solid ${T.border}`,
+          fontSize: 11, color: T.text2,
+          fontStyle: 'italic', lineHeight: 1.5,
+          background: T.bg2,
+        }}>
+          {caption}
         </div>
       )}
     </div>
   );
 };
 
-const ConceptView = ({ conceptId, compact = false, library = false }) => {
-  const c = CONCEPT_TEXT[conceptId];
-  const animVideoRef = useRef(null);
-  const animContainerRef = useRef(null);
+// ─── SCROLL-TO-ANIM BUTTON ──────────────────────────────────────────────────
+const ScrollToAnimButton = ({ targetRef, label }) => (
+  <button
+    onClick={() => {
+      targetRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      const video = targetRef.current?.querySelector('video');
+      video?.play().catch(() => {});
+    }}
+    style={{
+      display: 'inline-flex',
+      alignItems: 'center',
+      gap: 4,
+      marginLeft: 8,
+      padding: '2px 10px',
+      borderRadius: 12,
+      border: `1px solid ${T.blueDim}`,
+      background: T.blueLight,
+      color: T.blue,
+      fontSize: 11,
+      fontFamily: T.mono,
+      cursor: 'pointer',
+      verticalAlign: 'middle',
+      letterSpacing: '0.06em',
+    }}
+  >
+    ▶ {label || 'See animation'}
+  </button>
+);
 
-  const scrollToAnimation = () => {
-    if (animContainerRef.current) {
-      animContainerRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      if (animVideoRef.current) {
-        animVideoRef.current.play().catch(() => {});
+// ─── DRAGGABLE ORIGIN SIM ────────────────────────────────────────────────────
+const DraggableOriginSim = () => {
+  const [originX, setOriginX] = useState(0);
+  const objectX = 2.5;
+  const position = objectX - originX;
+
+  const canvasRef = useRef(null);
+  const isDragging = useRef(false);
+  const canvasWidth = 500;
+  const canvasHeight = 120;
+  const totalUnits = 10;
+  const scale = canvasWidth / totalUnits;
+  const centerPx = canvasWidth / 2;
+
+  const toPx = (units) => centerPx + units * scale;
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, canvasWidth, canvasHeight);
+
+    const lineY = canvasHeight / 2;
+
+    // Number line
+    ctx.strokeStyle = '#94a3b8';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(20, lineY);
+    ctx.lineTo(canvasWidth - 20, lineY);
+    ctx.stroke();
+
+    // Ticks (fixed physical positions)
+    for (let i = -4; i <= 4; i++) {
+      const tickPx = toPx(i);
+      ctx.strokeStyle = '#94a3b8';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(tickPx, lineY - 6);
+      ctx.lineTo(tickPx, lineY + 6);
+      ctx.stroke();
+    }
+
+    // Origin marker (red vertical line at originX)
+    const originPx = toPx(originX);
+    ctx.strokeStyle = '#dc2626';
+    ctx.lineWidth = 2.5;
+    ctx.setLineDash([]);
+    ctx.beginPath();
+    ctx.moveTo(originPx, lineY - 22);
+    ctx.lineTo(originPx, lineY + 22);
+    ctx.stroke();
+    ctx.fillStyle = '#dc2626';
+    ctx.font = 'bold 12px IBM Plex Mono, monospace';
+    ctx.textAlign = 'center';
+    ctx.fillText('0', originPx, lineY - 26);
+
+    // Tick labels relative to origin
+    for (let i = -4; i <= 4; i++) {
+      const tickPx = toPx(i);
+      const labelVal = i - originX;
+      if (tickPx < 25 || tickPx > canvasWidth - 25) continue;
+      ctx.fillStyle = '#64748b';
+      ctx.font = '11px IBM Plex Mono, monospace';
+      ctx.textAlign = 'center';
+      ctx.fillText(labelVal % 1 === 0 ? String(labelVal) : labelVal.toFixed(1), tickPx, lineY + 22);
+    }
+
+    // Bracket from origin to object
+    const objectPx = toPx(objectX);
+    const bracketY = lineY - 36;
+    const bracketColor = position >= 0 ? '#1d4ed8' : '#dc2626';
+
+    if (Math.abs(objectPx - originPx) > 3) {
+      ctx.strokeStyle = bracketColor;
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(originPx, bracketY);
+      ctx.lineTo(objectPx, bracketY);
+      ctx.stroke();
+      // Arrowhead
+      const dir = position >= 0 ? 1 : -1;
+      ctx.fillStyle = bracketColor;
+      ctx.beginPath();
+      ctx.moveTo(objectPx, bracketY);
+      ctx.lineTo(objectPx - dir * 8, bracketY - 4);
+      ctx.lineTo(objectPx - dir * 8, bracketY + 4);
+      ctx.closePath();
+      ctx.fill();
+      // Bracket ends
+      ctx.beginPath();
+      ctx.moveTo(originPx, bracketY - 4);
+      ctx.lineTo(originPx, bracketY + 4);
+      ctx.stroke();
+    }
+
+    // Object dot (blue, fixed position)
+    ctx.beginPath();
+    ctx.arc(objectPx, lineY, 10, 0, Math.PI * 2);
+    ctx.fillStyle = '#1d4ed8';
+    ctx.fill();
+    ctx.strokeStyle = '#ffffff';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+    ctx.fillStyle = '#0f172a';
+    ctx.font = '10px DM Sans, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('Object', objectPx, lineY + 36);
+
+  }, [originX, position]);
+
+  const handleMouseDown = () => { isDragging.current = true; };
+  const handleMouseUp = () => { isDragging.current = false; };
+  const handleMouseMove = (e) => {
+    if (!isDragging.current) return;
+    const rect = canvasRef.current.getBoundingClientRect();
+    const scaleX = canvasWidth / rect.width;
+    const mouseX = (e.clientX - rect.left) * scaleX;
+    const newOrigin = (mouseX - centerPx) / scale;
+    setOriginX(Math.max(-4, Math.min(4, newOrigin)));
+  };
+  const handleTouchMove = (e) => {
+    e.preventDefault();
+    const rect = canvasRef.current.getBoundingClientRect();
+    const scaleX = canvasWidth / rect.width;
+    const touch = e.touches[0];
+    const mouseX = (touch.clientX - rect.left) * scaleX;
+    const newOrigin = (mouseX - centerPx) / scale;
+    setOriginX(Math.max(-4, Math.min(4, newOrigin)));
+  };
+
+  return (
+    <div style={{
+      margin: '24px 0',
+      borderRadius: '8px',
+      border: `1px solid ${T.border}`,
+      overflow: 'hidden',
+      background: '#ffffff',
+    }}>
+      <div style={{
+        padding: '10px 16px',
+        background: T.bg2,
+        borderBottom: `1px solid ${T.border}`,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+      }}>
+        <div style={{
+          fontFamily: T.mono, fontSize: 9,
+          color: T.blue, letterSpacing: '0.12em',
+          textTransform: 'uppercase',
+        }}>⬡ Interactive — Drag the Origin</div>
+        <div style={{ fontFamily: T.mono, fontSize: 11 }}>
+          <span style={{ color: T.text2 }}>x = </span>
+          <span style={{
+            color: position >= 0 ? T.blue : T.red,
+            fontWeight: 600,
+          }}>
+            {position >= 0 ? '+' : ''}{position.toFixed(2)} m
+          </span>
+        </div>
+      </div>
+      <div style={{ padding: '20px 16px 16px' }}>
+        <canvas
+          ref={canvasRef}
+          width={canvasWidth}
+          height={canvasHeight}
+          style={{ width: '100%', cursor: 'ew-resize', display: 'block' }}
+          onMouseDown={handleMouseDown}
+          onMouseUp={handleMouseUp}
+          onMouseMove={handleMouseMove}
+          onMouseLeave={handleMouseUp}
+          onTouchStart={handleMouseDown}
+          onTouchEnd={handleMouseUp}
+          onTouchMove={handleTouchMove}
+        />
+        <div style={{
+          marginTop: 12,
+          padding: '8px 12px',
+          background: T.blueLight,
+          borderRadius: 6,
+          border: `1px solid ${T.border}`,
+          fontSize: 12,
+          color: T.text1,
+          lineHeight: 1.6,
+        }}>
+          <strong style={{ color: T.blue }}>Try it:</strong> Drag the red origin marker left and right. Watch how the position value of the blue object changes — even though the object never moves. Position is always relative to where you define zero.
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// ─── PATH BUILDER SIM ────────────────────────────────────────────────────────
+const PathBuilderSim = () => {
+  const canvasRef = useRef(null);
+  const [waypoints, setWaypoints] = useState([]);
+
+  const W = 480, H = 320;
+  const gridSize = 40;
+
+  const totalDistance = waypoints.reduce((sum, pt, i) => {
+    if (i === 0) return 0;
+    const prev = waypoints[i - 1];
+    return sum + Math.sqrt((pt.x - prev.x) ** 2 + (pt.y - prev.y) ** 2) / gridSize;
+  }, 0);
+
+  const displacement = waypoints.length >= 2 ? (() => {
+    const start = waypoints[0];
+    const end = waypoints[waypoints.length - 1];
+    const dx = (end.x - start.x) / gridSize;
+    const dy = -(end.y - start.y) / gridSize;
+    return { dx, dy, magnitude: Math.sqrt(dx ** 2 + dy ** 2) };
+  })() : null;
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, W, H);
+
+    // Grid lines
+    ctx.strokeStyle = '#e2e8f0';
+    ctx.lineWidth = 1;
+    for (let x = 0; x <= W; x += gridSize) {
+      ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, H); ctx.stroke();
+    }
+    for (let y = 0; y <= H; y += gridSize) {
+      ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke();
+    }
+
+    // Center axes
+    const cx = W / 2, cy = H / 2;
+    ctx.strokeStyle = '#94a3b8';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath(); ctx.moveTo(0, cy); ctx.lineTo(W, cy); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(cx, 0); ctx.lineTo(cx, H); ctx.stroke();
+
+    // Path segments (orange)
+    if (waypoints.length >= 2) {
+      ctx.strokeStyle = '#f97316';
+      ctx.lineWidth = 2.5;
+      ctx.setLineDash([]);
+      ctx.beginPath();
+      ctx.moveTo(waypoints[0].x, waypoints[0].y);
+      for (let i = 1; i < waypoints.length; i++) ctx.lineTo(waypoints[i].x, waypoints[i].y);
+      ctx.stroke();
+
+      // Segment distance labels
+      ctx.font = '10px IBM Plex Mono, monospace';
+      ctx.fillStyle = '#f97316';
+      ctx.textAlign = 'center';
+      for (let i = 1; i < waypoints.length; i++) {
+        const prev = waypoints[i - 1];
+        const curr = waypoints[i];
+        const segLen = Math.sqrt((curr.x - prev.x) ** 2 + (curr.y - prev.y) ** 2) / gridSize;
+        ctx.fillText(segLen.toFixed(1), (prev.x + curr.x) / 2, (prev.y + curr.y) / 2 - 8);
       }
     }
+
+    // Displacement arrow (green dashed)
+    if (waypoints.length >= 2) {
+      const start = waypoints[0];
+      const end = waypoints[waypoints.length - 1];
+      const ang = Math.atan2(end.y - start.y, end.x - start.x);
+
+      ctx.strokeStyle = '#16a34a';
+      ctx.lineWidth = 3;
+      ctx.setLineDash([6, 3]);
+      ctx.beginPath();
+      ctx.moveTo(start.x, start.y);
+      ctx.lineTo(end.x, end.y);
+      ctx.stroke();
+      ctx.setLineDash([]);
+
+      // Arrowhead
+      const dist = Math.sqrt((end.x - start.x) ** 2 + (end.y - start.y) ** 2);
+      if (dist > 5) {
+        const aLen = 12;
+        ctx.fillStyle = '#16a34a';
+        ctx.beginPath();
+        ctx.moveTo(end.x, end.y);
+        ctx.lineTo(end.x - aLen * Math.cos(ang - 0.4), end.y - aLen * Math.sin(ang - 0.4));
+        ctx.lineTo(end.x - aLen * Math.cos(ang + 0.4), end.y - aLen * Math.sin(ang + 0.4));
+        ctx.closePath();
+        ctx.fill();
+      }
+    }
+
+    // Waypoint dots
+    waypoints.forEach((pt, i) => {
+      ctx.beginPath();
+      ctx.arc(pt.x, pt.y, i === 0 ? 8 : 5, 0, Math.PI * 2);
+      ctx.fillStyle = i === 0 ? '#1d4ed8' : i === waypoints.length - 1 ? '#16a34a' : '#f97316';
+      ctx.fill();
+      ctx.strokeStyle = '#ffffff';
+      ctx.lineWidth = 2;
+      ctx.stroke();
+    });
+
+    // Start/End labels
+    if (waypoints.length >= 1) {
+      ctx.font = 'bold 10px IBM Plex Mono, monospace';
+      ctx.fillStyle = '#1d4ed8';
+      ctx.textAlign = 'left';
+      ctx.fillText('START', waypoints[0].x + 10, waypoints[0].y - 8);
+    }
+    if (waypoints.length >= 2) {
+      ctx.fillStyle = '#16a34a';
+      ctx.textAlign = 'left';
+      ctx.fillText('END', waypoints[waypoints.length - 1].x + 10, waypoints[waypoints.length - 1].y - 8);
+    }
+  }, [waypoints]);
+
+  const handleClick = (e) => {
+    const rect = canvasRef.current.getBoundingClientRect();
+    const scaleX = W / rect.width;
+    const scaleY = H / rect.height;
+    setWaypoints(prev => [...prev, {
+      x: (e.clientX - rect.left) * scaleX,
+      y: (e.clientY - rect.top) * scaleY,
+    }]);
   };
+
+  return (
+    <div style={{
+      margin: '24px 0',
+      borderRadius: '8px',
+      border: `1px solid ${T.border}`,
+      overflow: 'hidden',
+      background: '#ffffff',
+    }}>
+      <div style={{
+        padding: '10px 16px',
+        background: T.bg2,
+        borderBottom: `1px solid ${T.border}`,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+      }}>
+        <div style={{
+          fontFamily: T.mono, fontSize: 9,
+          color: T.blue, letterSpacing: '0.12em',
+          textTransform: 'uppercase',
+        }}>⬡ Interactive — Build a Path</div>
+        <button
+          onClick={() => setWaypoints([])}
+          style={{
+            fontFamily: T.mono, fontSize: 9,
+            color: T.text2, background: 'none',
+            border: `1px solid ${T.border}`,
+            borderRadius: 4, padding: '3px 8px',
+            cursor: 'pointer', letterSpacing: '0.08em',
+          }}
+        >CLEAR</button>
+      </div>
+
+      <canvas
+        ref={canvasRef}
+        width={W}
+        height={H}
+        style={{ width: '100%', cursor: 'crosshair', display: 'block' }}
+        onClick={handleClick}
+      />
+
+      <div style={{
+        display: 'grid',
+        gridTemplateColumns: '1fr 1fr 1fr',
+        borderTop: `1px solid ${T.border}`,
+      }}>
+        {[
+          { label: 'Distance traveled', value: waypoints.length >= 2 ? totalDistance.toFixed(2) + ' units' : '—', color: '#f97316' },
+          { label: 'Displacement magnitude', value: displacement ? displacement.magnitude.toFixed(2) + ' units' : '—', color: '#16a34a' },
+          { label: 'Are they equal?', value: displacement ? (Math.abs(totalDistance - displacement.magnitude) < 0.01 ? 'Yes (straight line)' : 'No') : '—', color: T.text1 },
+        ].map((stat, i) => (
+          <div key={i} style={{
+            padding: '12px 16px',
+            borderRight: i < 2 ? `1px solid ${T.border}` : 'none',
+          }}>
+            <div style={{
+              fontFamily: T.mono, fontSize: 9,
+              color: T.text2, letterSpacing: '0.1em',
+              textTransform: 'uppercase', marginBottom: 4,
+            }}>{stat.label}</div>
+            <div style={{
+              fontFamily: T.mono, fontSize: 14,
+              color: stat.color, fontWeight: 600,
+            }}>{stat.value}</div>
+          </div>
+        ))}
+      </div>
+
+      <div style={{
+        padding: '10px 16px',
+        background: T.blueLight,
+        borderTop: `1px solid ${T.border}`,
+        fontSize: 12, color: T.text1, lineHeight: 1.6,
+      }}>
+        <strong style={{ color: T.blue }}>Try it:</strong> Click anywhere on the grid to place waypoints and build a path. The orange path shows distance traveled. The green dashed arrow shows displacement — straight from start to end, regardless of the path you took.
+      </div>
+    </div>
+  );
+};
+
+const ConceptView = ({ conceptId, compact = false, library = false }) => {
+  const c = CONCEPT_TEXT[conceptId];
+  // Refs for scroll-to targets (motion1d only)
+  const positionSimRef = useRef(null);
+  const positionAnimRef = useRef(null);
+  const displacementAnimRef = useRef(null);
+  const distanceSimRef = useRef(null);
+  const distanceAnimRef = useRef(null);
 
   if (!c) return (
     <div style={{ height: "100%", display: "flex", alignItems: "center", justifyContent: "center", color: T.text3, fontSize: 14 }}>
@@ -1553,26 +1980,13 @@ const ConceptView = ({ conceptId, compact = false, library = false }) => {
                 }}>
                   {section.theory}
                   {conceptId === "motion1d" && section.id === "position" && (
-                    <button
-                      onClick={scrollToAnimation}
-                      style={{
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        gap: 4,
-                        marginLeft: 8,
-                        border: `1px solid ${T.blueDim}`,
-                        background: T.blueLight,
-                        color: T.blue,
-                        borderRadius: 12,
-                        padding: '3px 10px',
-                        fontSize: 11,
-                        fontFamily: T.mono,
-                        cursor: 'pointer',
-                        verticalAlign: 'middle',
-                      }}
-                    >
-                      ▶ See this animated
-                    </button>
+                    <ScrollToAnimButton targetRef={positionSimRef} label="Try interactive" />
+                  )}
+                  {conceptId === "motion1d" && section.id === "displacement" && (
+                    <ScrollToAnimButton targetRef={displacementAnimRef} label="See animation" />
+                  )}
+                  {conceptId === "motion1d" && section.id === "distance-vs-displacement" && (
+                    <ScrollToAnimButton targetRef={distanceSimRef} label="Try interactive" />
                   )}
                 </p>
               )}
@@ -1759,13 +2173,38 @@ const ConceptView = ({ conceptId, compact = false, library = false }) => {
                 </div>
               )}
             </section>
+            {conceptId === "motion1d" && section.id === "position" && (
+              <>
+                <div ref={positionSimRef}><DraggableOriginSim /></div>
+                <div ref={positionAnimRef}>
+                  <AnimationBlock
+                    src="/animations/1_1_a_position_origin.mp4"
+                    label="Position depends on the origin"
+                    caption="Watch how the same object has a different position value depending on where zero is defined."
+                  />
+                </div>
+              </>
+            )}
             {conceptId === "motion1d" && section.id === "displacement" && (
-              <AnimationBlock
-                src="/animations/1_1_position_displacement.mp4"
-                label="Position vectors and displacement"
-                videoRef={animVideoRef}
-                containerRef={animContainerRef}
-              />
+              <div ref={displacementAnimRef}>
+                <AnimationBlock
+                  src="/animations/1_1_b_displacement_path.mp4"
+                  label="Two paths, identical displacement"
+                  caption="No matter which route you take, displacement only measures straight-line change from start to end."
+                />
+              </div>
+            )}
+            {conceptId === "motion1d" && section.id === "distance-vs-displacement" && (
+              <>
+                <div ref={distanceSimRef}><PathBuilderSim /></div>
+                <div ref={distanceAnimRef}>
+                  <AnimationBlock
+                    src="/animations/1_1_c_distance_vs_displacement.mp4"
+                    label="The circular track — 400m traveled, 0m displaced"
+                    caption="A runner completing one full lap travels 400 meters but has zero displacement."
+                  />
+                </div>
+              </>
             )}
             </Fragment>
           ))}

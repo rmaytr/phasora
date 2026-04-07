@@ -1,6 +1,6 @@
 ﻿import katex from 'katex'
 import 'katex/dist/katex.min.css'
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback, Fragment } from "react";
 
 // ─── KATEX ────────────────────────────────────────────────────────────────────
 const Katex = ({ tex, display = false, style = {} }) => {
@@ -1364,8 +1364,129 @@ const TutorPanel = ({ starterPrompts = [], minHeight = 0 }) => {
     </div>
   );
 };
+
+// ─── ANIMATION BLOCK ─────────────────────────────────────────────────────────
+const AnimationBlock = ({ src, label, videoRef: externalVideoRef, containerRef: externalContainerRef }) => {
+  const internalVideoRef = useRef(null);
+  const internalContainerRef = useRef(null);
+  const videoRef = externalVideoRef || internalVideoRef;
+  const containerRef = externalContainerRef || internalContainerRef;
+  const [isLoaded, setIsLoaded] = useState(false);
+  const [hasError, setHasError] = useState(false);
+
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          if (videoRef.current) {
+            videoRef.current.play().catch(() => {});
+          }
+        } else {
+          if (videoRef.current) {
+            videoRef.current.pause();
+          }
+        }
+      },
+      { threshold: 0.3, rootMargin: '0px 0px -10% 0px' }
+    );
+    if (containerRef.current) observer.observe(containerRef.current);
+    return () => observer.disconnect();
+  }, [videoRef, containerRef]);
+
+  if (hasError) {
+    return (
+      <div
+        ref={containerRef}
+        style={{
+          margin: '24px 0',
+          borderRadius: 8,
+          overflow: 'hidden',
+          border: `1px solid ${T.border}`,
+          background: T.bg2,
+        }}
+      >
+        <div style={{
+          padding: '8px 14px',
+          borderBottom: `1px solid ${T.border}`,
+          display: 'flex',
+          alignItems: 'center',
+          gap: 8,
+          background: T.bg1,
+        }}>
+          <span style={{ fontFamily: T.mono, fontSize: 10, color: T.blue, letterSpacing: '0.1em', textTransform: 'uppercase' }}>
+            ▶ Animation
+          </span>
+          <span style={{ fontSize: 11, color: T.text2 }}>{label}</span>
+        </div>
+        <div style={{ padding: '48px 24px', textAlign: 'center', background: T.bg2 }}>
+          <div style={{ fontFamily: T.mono, fontSize: 11, color: T.text3, marginBottom: 8 }}>
+            ANIMATION NOT YET RENDERED
+          </div>
+          <div style={{ fontSize: 12, color: T.text2 }}>
+            Run: manim -pql animations/1_1_position_displacement.py PositionDisplacement
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div
+      ref={containerRef}
+      style={{
+        margin: '24px 0',
+        borderRadius: 8,
+        overflow: 'hidden',
+        border: `1px solid ${T.border}`,
+        background: T.bg2,
+      }}
+    >
+      <div style={{
+        padding: '8px 14px',
+        borderBottom: `1px solid ${T.border}`,
+        display: 'flex',
+        alignItems: 'center',
+        gap: 8,
+        background: T.bg1,
+      }}>
+        <span style={{ fontFamily: T.mono, fontSize: 10, color: T.blue, letterSpacing: '0.1em', textTransform: 'uppercase' }}>
+          ▶ Animation
+        </span>
+        <span style={{ fontSize: 11, color: T.text2 }}>{label}</span>
+      </div>
+      <video
+        ref={videoRef}
+        src={src}
+        style={{ width: '100%', display: 'block', maxHeight: 400, background: '#ffffff' }}
+        loop
+        muted
+        playsInline
+        onLoadedData={() => setIsLoaded(true)}
+        onError={() => setHasError(true)}
+        preload="metadata"
+      />
+      {!isLoaded && !hasError && (
+        <div style={{ padding: 40, textAlign: 'center', color: T.text3, fontFamily: T.mono, fontSize: 11 }}>
+          Loading animation...
+        </div>
+      )}
+    </div>
+  );
+};
+
 const ConceptView = ({ conceptId, compact = false, library = false }) => {
   const c = CONCEPT_TEXT[conceptId];
+  const animVideoRef = useRef(null);
+  const animContainerRef = useRef(null);
+
+  const scrollToAnimation = () => {
+    if (animContainerRef.current) {
+      animContainerRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      if (animVideoRef.current) {
+        animVideoRef.current.play().catch(() => {});
+      }
+    }
+  };
 
   if (!c) return (
     <div style={{ height: "100%", display: "flex", alignItems: "center", justifyContent: "center", color: T.text3, fontSize: 14 }}>
@@ -1408,8 +1529,8 @@ const ConceptView = ({ conceptId, compact = false, library = false }) => {
       {hasStructuredSections ? (
         <div style={{ maxWidth: cardMaxWidth, margin: centerReading ? "0 auto" : 0 }}>
           {c.sections.map((section, sectionIndex) => (
+            <Fragment key={section.id || section.title || sectionIndex}>
             <section
-              key={section.id || section.title || sectionIndex}
               style={{ marginBottom: sectionIndex < c.sections.length - 1 ? 28 : 0 }}
             >
               <h2 style={{
@@ -1431,6 +1552,28 @@ const ConceptView = ({ conceptId, compact = false, library = false }) => {
                   maxWidth: "100%",
                 }}>
                   {section.theory}
+                  {conceptId === "motion1d" && section.id === "position" && (
+                    <button
+                      onClick={scrollToAnimation}
+                      style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: 4,
+                        marginLeft: 8,
+                        border: `1px solid ${T.blueDim}`,
+                        background: T.blueLight,
+                        color: T.blue,
+                        borderRadius: 12,
+                        padding: '3px 10px',
+                        fontSize: 11,
+                        fontFamily: T.mono,
+                        cursor: 'pointer',
+                        verticalAlign: 'middle',
+                      }}
+                    >
+                      ▶ See this animated
+                    </button>
+                  )}
                 </p>
               )}
 
@@ -1616,6 +1759,15 @@ const ConceptView = ({ conceptId, compact = false, library = false }) => {
                 </div>
               )}
             </section>
+            {conceptId === "motion1d" && section.id === "displacement" && (
+              <AnimationBlock
+                src="/animations/1_1_position_displacement.mp4"
+                label="Position vectors and displacement"
+                videoRef={animVideoRef}
+                containerRef={animContainerRef}
+              />
+            )}
+            </Fragment>
           ))}
 
           {c.summaryBox && (

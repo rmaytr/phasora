@@ -382,6 +382,15 @@ const FORMULAS = [
   },
 ];
 
+const CONCEPT_FORMULAS = {
+  motion1d:   ["f5", "f6", "f7"],
+  projectile: ["f1"],
+  velocity:   ["f1"],
+  newton1:    ["f2"],
+  friction:   ["f2"],
+  sho:        ["f3", "f4"],
+};
+
 const VIZ_CONCEPT_IDS = new Set(
   CURRICULUM.flatMap((group) => group.concepts.filter((concept) => concept.hasViz).map((concept) => concept.id))
 );
@@ -2098,7 +2107,7 @@ const ConceptView = ({ conceptId, compact = false, library = false }) => {
                   background: T.blueLight,
                   borderRadius: 8,
                   border: `1px solid ${T.border}`,
-                  padding: "14px 16px",
+                  padding: "16px 20px",
                 }}>
                   <div className="label" style={{ marginBottom: 10, color: T.blue }}>
                     Core Equations
@@ -2108,11 +2117,15 @@ const ConceptView = ({ conceptId, compact = false, library = false }) => {
                       display: "flex",
                       alignItems: "center",
                       gap: 12,
-                      padding: "10px 0",
+                      padding: "12px 0",
                       borderBottom: i < section.equations.length - 1 ? `1px solid ${T.border}` : "none",
                     }}>
-                      <div style={{ minWidth: 0, overflowX: "auto" }}>
-                        <Katex tex={eq.tex} style={{ fontSize: library ? 17 : 15, color: T.navy }} />
+                      <div style={{ lineHeight: 1 }}>
+                        <Katex
+                          tex={eq.tex}
+                          display={true}
+                          style={{ fontSize: library ? 20 : 19, color: T.navy }}
+                        />
                       </div>
                       {eq.label && (
                         <span style={{ fontSize: 12, color: T.text3, fontStyle: "italic", flex: 1 }}>
@@ -2269,8 +2282,12 @@ const ConceptView = ({ conceptId, compact = false, library = false }) => {
                   padding: "12px 0",
                   borderBottom: i < c.equations.length - 1 ? `1px solid ${T.border}` : "none",
                 }}>
-                  <div style={{ minWidth: 0, overflowX: "auto" }}>
-                    <Katex tex={eq.tex} style={{ fontSize: library ? 17 : 15, color: T.navy }} />
+                  <div style={{ lineHeight: 1 }}>
+                    <Katex
+                      tex={eq.tex}
+                      display={true}
+                      style={{ fontSize: library ? 20 : 19, color: T.navy }}
+                    />
                   </div>
                   <span style={{ fontSize: library ? 14 : 13, color: T.text3, fontStyle: "italic", flex: 1 }}>
                     {eq.label}
@@ -3289,9 +3306,61 @@ export default function App() {
                   </button>
                 </div>
                 <div style={{ flex: 1, minHeight: 0, overflowY: "auto", padding: "12px 12px 14px" }}>
-                  {FORMULAS.map((formula) => (
-                    <FormulaCard key={formula.id} formula={formula} />
-                  ))}
+                  {(() => {
+                    const relevantIds = CONCEPT_FORMULAS[activeConcept];
+                    const toShow = relevantIds
+                      ? FORMULAS.filter(f => relevantIds.includes(f.id))
+                      : FORMULAS;
+
+                    return (
+                      <>
+                        <div style={{
+                          padding: "8px 12px 10px",
+                          marginBottom: 8,
+                          borderBottom: `1px solid ${T.border}`,
+                          flexShrink: 0,
+                        }}>
+                          <div style={{
+                            fontFamily: T.brandMono,
+                            fontSize: 9,
+                            color: T.text3,
+                            letterSpacing: "0.1em",
+                            textTransform: "uppercase",
+                            marginBottom: 3,
+                          }}>
+                            Showing formulas for
+                          </div>
+                          <div style={{
+                            fontSize: 12,
+                            fontWeight: 500,
+                            color: T.navy,
+                          }}>
+                            {CONCEPT_TEXT[activeConcept]?.title || "Current topic"}
+                          </div>
+                        </div>
+
+                        {toShow.map((formula) => (
+                          <FormulaCard
+                            key={formula.id}
+                            formula={formula}
+                            defaultOpen={toShow.length === 1}
+                          />
+                        ))}
+
+                        {!relevantIds && (
+                          <div style={{
+                            padding: "10px 12px",
+                            fontSize: 11,
+                            color: T.text3,
+                            fontStyle: "italic",
+                            lineHeight: 1.6,
+                          }}>
+                            Showing all formulas. Select a specific concept from the Topics panel to filter.
+                          </div>
+                        )}
+                      </>
+                    );
+                  })()}
                 </div>
               </div>
             )}

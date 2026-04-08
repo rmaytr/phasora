@@ -391,6 +391,37 @@ const CONCEPT_FORMULAS = {
   sho:        ["f3", "f4"],
 };
 
+const CONCEPT_VISUALS = {
+  motion1d: {
+    animations: [
+      {
+        id: 'anim_position',
+        src: '/animations/1_1_a_position_origin.mp4',
+        label: 'Position depends on the origin',
+        caption: 'Watch how the same object has a different position value depending on where zero is defined.',
+      },
+      {
+        id: 'anim_displacement',
+        src: '/animations/1_1_b_displacement_path.mp4',
+        label: 'Two paths, identical displacement',
+        caption: 'No matter which route you take, displacement only measures straight-line change from start to end.',
+      },
+      {
+        id: 'anim_distance',
+        src: '/animations/1_1_c_distance_vs_displacement.mp4',
+        label: 'The circular track — 400m traveled, 0m displaced',
+        caption: 'A runner completing one full lap travels 400 meters but has zero displacement.',
+      },
+    ],
+    interactives: ['DraggableOriginSim', 'PathBuilderSim'],
+  },
+  projectile:  { animations: [], interactives: [] },
+  velocity:    { animations: [], interactives: [] },
+  newton1:     { animations: [], interactives: [] },
+  friction:    { animations: [], interactives: [] },
+  sho:         { animations: [], interactives: [] },
+};
+
 const VIZ_CONCEPT_IDS = new Set(
   CURRICULUM.flatMap((group) => group.concepts.filter((concept) => concept.hasViz).map((concept) => concept.id))
 );
@@ -1915,6 +1946,86 @@ const PathBuilderSim = () => {
   );
 };
 
+const INTERACTIVE_REGISTRY = {
+  DraggableOriginSim: DraggableOriginSim,
+  PathBuilderSim: PathBuilderSim,
+};
+
+const VisualizePanel = ({ conceptId }) => {
+  const visuals = CONCEPT_VISUALS[conceptId];
+
+  if (!visuals || (visuals.animations.length === 0 && visuals.interactives.length === 0)) {
+    return (
+      <div style={{
+        height: '100%',
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+        color: T.text3,
+        padding: 40,
+        textAlign: 'center',
+        gap: 12,
+      }}>
+        <div style={{ fontSize: 28, opacity: 0.4 }}>◈</div>
+        <div style={{ fontFamily: T.brandMono, fontSize: 11, letterSpacing: '0.1em', textTransform: 'uppercase' }}>
+          No visuals yet
+        </div>
+        <div style={{ fontSize: 12, color: T.text3, lineHeight: 1.6, maxWidth: 260 }}>
+          Animations and interactives for this concept are coming soon.
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div style={{
+      height: '100%',
+      overflowY: 'auto',
+      padding: '24px 20px 32px',
+    }}>
+      <div style={{
+        fontFamily: T.brandMono,
+        fontSize: 9,
+        color: T.blue,
+        letterSpacing: '0.12em',
+        textTransform: 'uppercase',
+        marginBottom: 6,
+      }}>
+        Visualizations
+      </div>
+      <div style={{
+        fontSize: 13,
+        color: T.text2,
+        marginBottom: 22,
+        lineHeight: 1.6,
+      }}>
+        Animations and interactive simulations for this concept. Scroll to explore.
+      </div>
+
+      {visuals.interactives.map((name, i) => {
+        const Component = INTERACTIVE_REGISTRY[name];
+        if (!Component) return null;
+        return (
+          <div key={`interactive-${i}`} style={{ marginBottom: 28 }}>
+            <Component />
+          </div>
+        );
+      })}
+
+      {visuals.animations.map((anim) => (
+        <div key={anim.id} style={{ marginBottom: 28 }}>
+          <AnimationBlock
+            src={anim.src}
+            label={anim.label}
+            caption={anim.caption}
+          />
+        </div>
+      ))}
+    </div>
+  );
+};
+
 const ConceptView = ({ conceptId, compact = false, library = false }) => {
   const c = CONCEPT_TEXT[conceptId];
   // Refs for scroll-to targets (motion1d only)
@@ -2316,12 +2427,6 @@ const MODE_CARDS = [
     description: "Free exploration. Simulations, formulas, and AI tutor all in one place.",
   },
   {
-    id: "library",
-    icon: "☰",
-    title: "Topic Library",
-    description: "Structured curriculum. Read concepts, explore formulas, learn step by step.",
-  },
-  {
     id: "problems",
     icon: "∑",
     title: "Problem Mode",
@@ -2560,7 +2665,7 @@ const HomePage = ({ onSelectMode }) => {
 
         <div style={{
           display: "grid",
-          gridTemplateColumns: "repeat(auto-fit, minmax(230px, 1fr))",
+          gridTemplateColumns: "repeat(3, 1fr)",
           gap: 16,
         }}>
           {MODE_CARDS.map((card) => {
@@ -2638,9 +2743,9 @@ const TopNav = ({
   onGoHome,
   showSidebar,
   onToggleSidebar,
-  showSim,
+  vizPanel,
   canvasView,
-  onToggleSim,
+  onOpenVizPanel,
   onToggleProblems,
   showFormulas,
   onToggleFormulas,
@@ -2650,11 +2755,6 @@ const TopNav = ({
   const [hoverWordmark, setHoverWordmark] = useState(false);
   const [hoverTab, setHoverTab] = useState(null);
   const [hoverUtility, setHoverUtility] = useState(null);
-
-  const tabs = [
-    { id: "visualize", label: "VISUALIZE", active: canvasView === "learn" && showSim, onClick: onToggleSim },
-    { id: "problems", label: "PROBLEMS", active: canvasView === "problems", onClick: onToggleProblems },
-  ];
 
   const utilityBtnStyle = (active, hover) => ({
     display: "flex",
@@ -2714,32 +2814,62 @@ const TopNav = ({
           >
             ⊞ TOPICS
           </button>
+          {/* Segmented Viz Switcher */}
           <div style={{
-            display: "flex",
-            gap: 6,
-            alignItems: "center",
+            display: 'flex',
+            alignItems: 'center',
+            background: T.bg2,
+            border: `1px solid ${T.border}`,
+            borderRadius: 999,
+            padding: 3,
+            gap: 2,
           }}>
-            {tabs.map((tab) => (
-              <button
-                key={tab.id}
-                onClick={tab.onClick}
-                onMouseEnter={() => setHoverTab(tab.id)}
-                onMouseLeave={() => setHoverTab(null)}
-                style={{
-                  padding: "7px 14px",
-                  borderRadius: 999,
-                  fontFamily: T.brandMono,
-                  fontSize: 11,
-                  letterSpacing: "0.08em",
-                  color: tab.active ? "#fff" : hoverTab === tab.id ? T.text1 : T.text2,
-                  background: tab.active ? T.blue : hoverTab === tab.id ? "rgba(0,0,0,0.04)" : "transparent",
-                  transition: "all 0.15s ease",
-                }}
-              >
-                {tab.label}
-              </button>
-            ))}
+            {[
+              { id: 'visualize', label: 'VISUALIZE' },
+              { id: 'simulation', label: 'SIMULATION' },
+            ].map(({ id, label }) => {
+              const active = vizPanel === id;
+              return (
+                <button
+                  key={id}
+                  onClick={() => onOpenVizPanel(id)}
+                  style={{
+                    padding: '5px 13px',
+                    borderRadius: 999,
+                    fontFamily: T.brandMono,
+                    fontSize: 10,
+                    letterSpacing: '0.08em',
+                    color: active ? '#fff' : T.text2,
+                    background: active ? T.blue : 'transparent',
+                    border: 'none',
+                    cursor: 'pointer',
+                    transition: 'background 0.18s ease, color 0.18s ease',
+                    whiteSpace: 'nowrap',
+                  }}
+                >
+                  {label}
+                </button>
+              );
+            })}
           </div>
+
+          <button
+            onClick={onToggleProblems}
+            onMouseEnter={() => setHoverTab("problems")}
+            onMouseLeave={() => setHoverTab(null)}
+            style={{
+              padding: "7px 14px",
+              borderRadius: 999,
+              fontFamily: T.brandMono,
+              fontSize: 11,
+              letterSpacing: "0.08em",
+              color: canvasView === "problems" ? "#fff" : hoverTab === "problems" ? T.text1 : T.text2,
+              background: canvasView === "problems" ? T.blue : hoverTab === "problems" ? "rgba(0,0,0,0.04)" : "transparent",
+              transition: "all 0.15s ease",
+            }}
+          >
+            PROBLEMS
+          </button>
         </>
       ) : (
         <div style={{
@@ -2870,7 +3000,7 @@ export default function App() {
   const [activeMode, setActiveMode] = useState("home"); // home | canvas | library | problems | tutor
   const [activeConcept, setActiveConcept] = useState("projectile");
   const [expandedGroup, setExpandedGroup] = useState("kinematics");
-  const [showSim, setShowSim] = useState(false);
+  const [vizPanel, setVizPanel] = useState(null); // null | 'visualize' | 'simulation'
   const [showFormulas, setShowFormulas] = useState(false);
   const [showTutor, setShowTutor] = useState(false);
   const [canvasView, setCanvasView] = useState("learn"); // learn | problems
@@ -2938,7 +3068,7 @@ export default function App() {
     return () => window.removeEventListener("resize", onResize);
   }, [activeMode, showFormulas, showTutor, sidebarOpen]);
 
-  const panelOpen = showSim && canvasView === "learn";
+  const panelOpen = vizPanel !== null && canvasView === "learn";
   const constrainedCanvas = panelOpen && mainContentWidth > 0 && mainContentWidth < 700;
   const showConceptOnlyInConstrained = constrainedCanvas && showConceptInTightLayout;
   const vizMode = activeConcept === "sho" ? "sho" : "projectile";
@@ -3128,10 +3258,10 @@ export default function App() {
 
   useEffect(() => () => stopDragging(), [stopDragging]);
 
-  const toggleSim = () => {
+  const openVizPanel = (mode) => {
     if (canvasView !== "learn") setCanvasView("learn");
     setShowConceptInTightLayout(false);
-    setShowSim((s) => !s);
+    setVizPanel(prev => prev === mode ? null : mode);
   };
 
   const toggleFormulas = () => setShowFormulas((s) => !s);
@@ -3149,7 +3279,7 @@ export default function App() {
       if (canvasView !== "learn") setCanvasView("learn");
       if (hasVisualization) {
         setShowConceptInTightLayout(false);
-        setShowSim(true);
+        setVizPanel('simulation');
       }
     }
   };
@@ -3215,11 +3345,11 @@ export default function App() {
           onGoHome={goHome}
           showSidebar={sidebarOpen}
           onToggleSidebar={() => setSidebarOpen((s) => !s)}
-          showSim={showSim}
+          vizPanel={vizPanel}
           showFormulas={showFormulas}
           showTutor={showTutor}
           canvasView={canvasView}
-          onToggleSim={toggleSim}
+          onOpenVizPanel={openVizPanel}
           onToggleFormulas={toggleFormulas}
           onToggleProblems={toggleCanvasProblems}
           onToggleTutor={toggleTutor}
@@ -3468,42 +3598,86 @@ export default function App() {
                   <div style={{
                     flex: 1,
                     minWidth: 0,
-                    overflowY: "auto",
-                    overflowX: "hidden",
                     height: "100%",
-                    background: T.bg0,
+                    background: T.bg1,
+                    display: "flex",
+                    flexDirection: "column",
+                    overflow: "hidden",
                     pointerEvents: isDragging ? "none" : "auto",
+                    animation: "slideInRight 0.3s ease",
                   }}>
+                    {/* Panel header */}
                     <div style={{
-                      animation: "slideInRight 0.3s ease",
-                      padding: "20px 22px 18px",
-                      minWidth: 0,
-                      height: "100%",
-                      display: "flex",
-                      flexDirection: "column",
+                      padding: '10px 14px',
+                      borderBottom: `1px solid ${T.border}`,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      flexShrink: 0,
                     }}>
-                      {constrainedCanvas && (
-                        <div style={{ marginBottom: 8 }}>
-                          <button
-                            onClick={() => setShowConceptInTightLayout(true)}
-                            style={{
-                              padding: "5px 10px",
-                              borderRadius: 999,
-                              border: `1px solid ${T.border}`,
-                              background: T.bg1,
-                              color: T.text1,
-                              fontFamily: T.brandMono,
-                              fontSize: 10,
-                              letterSpacing: "0.06em",
-                              textTransform: "uppercase",
-                              transition: "all 0.15s ease",
-                            }}
-                          >
-                            Show Concept
-                          </button>
+                      <div style={{
+                        fontFamily: T.brandMono,
+                        fontSize: 10,
+                        color: T.text2,
+                        letterSpacing: '0.09em',
+                        textTransform: 'uppercase',
+                      }}>
+                        {vizPanel === 'visualize' ? 'Visualizations' : 'Simulation'}
+                      </div>
+                      <button
+                        onClick={() => setVizPanel(null)}
+                        style={{
+                          color: T.text2, fontSize: 16, lineHeight: 1,
+                          padding: '2px 6px', transition: 'color 0.15s ease',
+                        }}
+                        aria-label="Close panel"
+                      >
+                        ×
+                      </button>
+                    </div>
+
+                    {/* Panel content */}
+                    <div style={{ flex: 1, minHeight: 0, overflow: 'hidden' }}>
+                      {vizPanel === 'visualize' ? (
+                        <VisualizePanel conceptId={activeConcept} />
+                      ) : (
+                        <div style={{
+                          height: "100%",
+                          overflowY: "auto",
+                          overflowX: "hidden",
+                        }}>
+                          <div style={{
+                            padding: "20px 22px 18px",
+                            minWidth: 0,
+                            height: "100%",
+                            display: "flex",
+                            flexDirection: "column",
+                          }}>
+                            {constrainedCanvas && (
+                              <div style={{ marginBottom: 8 }}>
+                                <button
+                                  onClick={() => setShowConceptInTightLayout(true)}
+                                  style={{
+                                    padding: "5px 10px",
+                                    borderRadius: 999,
+                                    border: `1px solid ${T.border}`,
+                                    background: T.bg1,
+                                    color: T.text1,
+                                    fontFamily: T.brandMono,
+                                    fontSize: 10,
+                                    letterSpacing: "0.06em",
+                                    textTransform: "uppercase",
+                                    transition: "all 0.15s ease",
+                                  }}
+                                >
+                                  Show Concept
+                                </button>
+                              </div>
+                            )}
+                            {vizMode === "sho" ? <SHOSim /> : <ProjectileSim />}
+                          </div>
                         </div>
                       )}
-                      {vizMode === "sho" ? <SHOSim /> : <ProjectileSim />}
                     </div>
                   </div>
                 )}

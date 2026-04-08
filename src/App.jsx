@@ -431,6 +431,7 @@ const PANEL_DEFAULTS = {
   concept: 380,
   formulas: 300,
   tutor: 320,
+  sim: 340,
 };
 
 const PANEL_LIMITS = {
@@ -438,6 +439,7 @@ const PANEL_LIMITS = {
   concept: { min: 200, max: 600 },
   formulas: { min: 240, max: 480 },
   tutor: { min: 260, max: 480 },
+  sim: { min: 200, max: 800 },
 };
 
 const MIN_MAIN_WIDTH = 320;
@@ -677,6 +679,57 @@ const SHOSim = () => {
     setParams(p => ({ ...p, [param]: value }));
   }, []);
 
+  if (canvasSize.width < 380) {
+    return (
+      <div style={{
+        height: '100%',
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: '32px 24px',
+        textAlign: 'center',
+        gap: 14,
+        background: T.bg2,
+      }}>
+        <div style={{
+          fontSize: 24,
+          opacity: 0.35,
+          lineHeight: 1,
+        }}>⟷</div>
+        <div style={{
+          fontFamily: T.brandMono,
+          fontSize: 10,
+          color: T.text3,
+          letterSpacing: '0.12em',
+          textTransform: 'uppercase',
+        }}>
+          More space needed
+        </div>
+        <div style={{
+          fontSize: 12,
+          color: T.text2,
+          lineHeight: 1.65,
+          maxWidth: 200,
+        }}>
+          Drag the panel divider to the left to give the Spring-Mass simulation more room.
+        </div>
+        <div style={{
+          padding: '5px 12px',
+          borderRadius: 6,
+          background: T.blueLight,
+          border: `1px solid ${T.border2}`,
+          fontSize: 11,
+          color: T.blue,
+          fontFamily: T.brandMono,
+          letterSpacing: '0.06em',
+        }}>
+          Min. width: 380px
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div style={{ display: "flex", flexDirection: "column", height: "100%", minHeight: 0, gap: 10 }}>
       <div ref={canvasContainerRef} style={{ flex: 1, minHeight: 300 }}>
@@ -910,6 +963,57 @@ const ProjectileSim = () => {
     setRunning(false);
     setParams(p => ({ ...p, [param]: value }));
   }, []);
+
+  if (canvasSize.width < 420) {
+    return (
+      <div style={{
+        height: '100%',
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: '32px 24px',
+        textAlign: 'center',
+        gap: 14,
+        background: T.bg2,
+      }}>
+        <div style={{
+          fontSize: 24,
+          opacity: 0.35,
+          lineHeight: 1,
+        }}>⟷</div>
+        <div style={{
+          fontFamily: T.brandMono,
+          fontSize: 10,
+          color: T.text3,
+          letterSpacing: '0.12em',
+          textTransform: 'uppercase',
+        }}>
+          More space needed
+        </div>
+        <div style={{
+          fontSize: 12,
+          color: T.text2,
+          lineHeight: 1.65,
+          maxWidth: 200,
+        }}>
+          Drag the panel divider to the left to give the Projectile Motion simulation more room.
+        </div>
+        <div style={{
+          padding: '5px 12px',
+          borderRadius: 6,
+          background: T.blueLight,
+          border: `1px solid ${T.border2}`,
+          fontSize: 11,
+          color: T.blue,
+          fontFamily: T.brandMono,
+          letterSpacing: '0.06em',
+        }}>
+          Min. width: 420px
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div style={{ display: "flex", flexDirection: "column", height: "100%", minHeight: 0, gap: 10 }}>
@@ -2066,9 +2170,10 @@ const ConceptView = ({ conceptId, compact = false, library = false }) => {
       <div style={{ borderTop: `1px solid ${T.border}`, marginBottom: library ? 24 : 18 }} />
 
       <h1 style={{
-        fontFamily: T.serif, fontStyle: "italic",
-        fontSize: library ? 34 : 28, color: T.navy,
-        lineHeight: 1.22, marginBottom: library ? 20 : 18, fontWeight: 400,
+        fontFamily: T.cardSans, fontStyle: "normal",
+        fontSize: library ? 32 : 26, color: T.navy,
+        lineHeight: 1.25, marginBottom: library ? 20 : 16, fontWeight: 700,
+        letterSpacing: "-0.02em",
       }}>
         {c.title}
       </h1>
@@ -3006,9 +3111,9 @@ export default function App() {
   const [canvasView, setCanvasView] = useState("learn"); // learn | problems
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [sidebarWidth, setSidebarWidth] = useState(PANEL_DEFAULTS.sidebar);
-  const [conceptWidth, setConceptWidth] = useState(PANEL_DEFAULTS.concept);
   const [formulaWidth, setFormulaWidth] = useState(PANEL_DEFAULTS.formulas);
   const [tutorWidth, setTutorWidth] = useState(PANEL_DEFAULTS.tutor);
+  const [vizPanelWidth, setVizPanelWidth] = useState(PANEL_DEFAULTS.sim);
   const [mainContentWidth, setMainContentWidth] = useState(0);
   const [showConceptInTightLayout, setShowConceptInTightLayout] = useState(false);
   const [activeHandle, setActiveHandle] = useState(null);
@@ -3101,8 +3206,8 @@ export default function App() {
     )
   ), [sidebarUsedWidth, showFormulas, formulaWidth]);
 
-  const getConceptMax = useCallback(() => (
-    clamp(mainContentWidth - 260, PANEL_LIMITS.concept.min, PANEL_LIMITS.concept.max)
+  const getSimMax = useCallback(() => (
+    clamp(mainContentWidth - PANEL_LIMITS.concept.min, PANEL_LIMITS.sim.min, PANEL_LIMITS.sim.max)
   ), [mainContentWidth]);
 
   const sidebarRenderWidth = (sidebarOpen || activeMode !== "canvas")
@@ -3114,9 +3219,9 @@ export default function App() {
   const tutorRenderWidth = showTutor
     ? Math.max(0, Math.min(tutorWidth, getTutorMax()))
     : 0;
-  const conceptRenderWidth = panelOpen
-    ? clamp(conceptWidth, PANEL_LIMITS.concept.min, getConceptMax())
-    : conceptWidth;
+  const vizPanelRenderWidth = panelOpen
+    ? clamp(vizPanelWidth, PANEL_LIMITS.sim.min, getSimMax())
+    : 0;
 
   const stopDragging = useCallback(() => {
     if (!dragRef.current.dragging) return;
@@ -3147,7 +3252,7 @@ export default function App() {
       return;
     }
     if (boundary === "B") {
-      setConceptWidth((prev) => (prev === nextWidth ? prev : nextWidth));
+      setVizPanelWidth((prev) => (prev === nextWidth ? prev : nextWidth));
       return;
     }
     if (boundary === "C") {
@@ -3183,10 +3288,10 @@ export default function App() {
       max = getSidebarMax();
       direction = 1;
     } else if (boundary === "B") {
-      startWidth = conceptRenderWidth;
-      min = PANEL_LIMITS.concept.min;
-      max = getConceptMax();
-      direction = 1;
+      startWidth = vizPanelRenderWidth;
+      min = PANEL_LIMITS.sim.min;
+      max = getSimMax();
+      direction = -1;
     } else if (boundary === "C") {
       startWidth = formulaRenderWidth;
       min = PANEL_LIMITS.formulas.min;
@@ -3223,9 +3328,9 @@ export default function App() {
     document.addEventListener("mouseup", onDragUp);
     window.addEventListener("mouseleave", onDragLeave);
   }, [
-    conceptRenderWidth,
+    vizPanelRenderWidth,
     formulaRenderWidth,
-    getConceptMax,
+    getSimMax,
     getFormulaMax,
     getSidebarMax,
     getTutorMax,
@@ -3244,7 +3349,7 @@ export default function App() {
       return;
     }
     if (boundary === "B") {
-      setConceptWidth(clamp(PANEL_DEFAULTS.concept, PANEL_LIMITS.concept.min, getConceptMax()));
+      setVizPanelWidth(clamp(PANEL_DEFAULTS.sim, PANEL_LIMITS.sim.min, getSimMax()));
       return;
     }
     if (boundary === "C") {
@@ -3254,7 +3359,7 @@ export default function App() {
     if (boundary === "D") {
       setTutorWidth(clamp(PANEL_DEFAULTS.tutor, PANEL_LIMITS.tutor.min, getTutorMax()));
     }
-  }, [getConceptMax, getFormulaMax, getSidebarMax, getTutorMax]);
+  }, [getSimMax, getFormulaMax, getSidebarMax, getTutorMax]);
 
   useEffect(() => () => stopDragging(), [stopDragging]);
 
@@ -3543,11 +3648,11 @@ export default function App() {
                 {(!panelOpen || showConceptOnlyInConstrained || !constrainedCanvas) && (
                   <div style={{
                     position: "relative",
-                    flex: panelOpen ? "0 0 auto" : 1,
-                    flexShrink: panelOpen ? 0 : 1,
-                    width: panelOpen ? conceptRenderWidth : "100%",
+                    flex: 1,
+                    flexShrink: 1,
+                    width: panelOpen ? "auto" : "100%",
                     minWidth: panelOpen ? PANEL_LIMITS.concept.min : 0,
-                    maxWidth: panelOpen ? PANEL_LIMITS.concept.max : "100%",
+                    maxWidth: "100%",
                     transition: activeHandle === "B" ? "none" : "width 0.25s ease",
                     height: "100%",
                     overflow: "visible",
@@ -3596,8 +3701,9 @@ export default function App() {
 
                 {panelOpen && (!constrainedCanvas || !showConceptOnlyInConstrained) && (
                   <div style={{
-                    flex: 1,
-                    minWidth: 0,
+                    flex: "0 0 auto",
+                    width: vizPanelRenderWidth,
+                    minWidth: PANEL_LIMITS.sim.min,
                     height: "100%",
                     background: T.bg1,
                     display: "flex",
